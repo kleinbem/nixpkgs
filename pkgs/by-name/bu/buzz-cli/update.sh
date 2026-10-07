@@ -28,3 +28,5 @@ sed -i "s|tag = \"desktop-v[^\"]*\";|tag = \"$tag\";|" pkgs/by-name/bu/buzz-cli/
 update-source-version buzz-cli "$base-unstable-$date"
 nix-update buzz-cli --version skip
 nix-update buzz-desktop --version skip
+# The relay's web bundles have their own pnpm dependency hash.
+nix-update buzz-relay --version skip --subpackage web
