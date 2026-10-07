@@ -35,10 +35,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Test executes the `buzz-agent` binary via `.env_clear()`, which strips `SSL_CERT_FILE`
     # and fails TLS root initialization inside the Nix build sandbox. https://github.com/block/buzz/issues/8541
     "--skip=cli_signin_aliases_reuse_legacy_cache_without_runtime_configuration"
-    # Racy: stop reading at the prompt response before the steer rejection arrives.
-    # Fixed on main by https://github.com/block/buzz/pull/8129 (next release).
-    "--skip=steer_rejected_on_run_id_mismatch"
-    # https://github.com/block/buzz/pull/5292
+    # Racy: stops reading at the prompt response before the steer rejection
+    # arrives. https://github.com/block/buzz/pull/5292
     "--skip=steer_rejected_on_empty_prompt"
   ]
   # The Databricks OAuth tests serve on 127.0.0.1 but connect to `localhost`,

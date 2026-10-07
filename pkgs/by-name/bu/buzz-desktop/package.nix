@@ -101,7 +101,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   pname = "buzz-desktop";
   # The Buzz packages are built at the same desktop release (see buzz-cli); the
   # app bundles their binaries, so it shares their source.
-  version = lib.removePrefix "desktop-v" buzz-cli.src.tag;
+  # buzz-next: Buzz main after desktop-v0.5.28; the app still reports 0.5.28.
+  version = "0.5.28-unstable-2026-10-22";
 
   __structuredAttrs = true;
   strictDeps = true;
@@ -110,7 +111,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   cargoRoot = "desktop/src-tauri";
   buildAndTestSubdir = "desktop/src-tauri";
-  cargoHash = "sha256-lB+7VKXczOyJlr+6LP5UtyMKzyJCEXyBeFOi8Rznirw=";
+  cargoHash = "sha256-hFrEpIuBo+HBxMGUbZqtj/CZrbln6dKNes55BJr5MXE=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;

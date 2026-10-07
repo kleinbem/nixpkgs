@@ -10,18 +10,18 @@ rustPlatform.buildRustPackage {
   pname = "buzz-cli";
   # The CLI crates have no releases of their own: build the workspace at Buzz
   # Desktop releases, which ship these binaries.
-  version = "0.1.0-unstable-2026-10-09";
+  version = "0.1.0-unstable-2026-10-22";
   __structuredAttrs = true;
   __darwinAllowLocalNetworking = true;
 
   src = fetchFromGitHub {
     owner = "block";
     repo = "buzz";
-    tag = "desktop-v0.5.28";
-    hash = "sha256-NEsLQwcoQ2zTgznFgGFGNgYPnoclicNVycSEjl7I0Wo=";
+    rev = "2d289f720de0012fa36b5f6faa0e3bdd845ccfcf";
+    hash = "sha256-jGfNxXM39Rmb+oh6TAbPePVeywoXeTin84MajEb7Yfs=";
   };
 
-  cargoHash = "sha256-UQ8qNqoeDwkwhmVZebi++gb2GP61dr1Zv2QU9mJ6KJ8=";
+  cargoHash = "sha256-bcLoCIjiCNLAYOqJ59ELQZJJ5ZUh58CSU9CyDTNbckk=";
   cargoBuildFlags = [ "--package=buzz-cli" ];
   cargoTestFlags = [ "--package=buzz-cli" ];
 
