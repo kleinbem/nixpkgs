@@ -17,6 +17,7 @@
   curl,
   versionCheckHook,
   mesh-llm-native-runtime,
+  nixosTests,
   runCommand,
 
   config,
@@ -147,6 +148,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Also updates mesh-llm-native-runtime, which pins the release.
     updateScript = ./update.sh;
     tests = {
+      nixos = nixosTests.mesh-llm;
       # Upstream's package QA (Mesh-LLM/mesh-packaging): a client reaches
       # readiness offline and stops cleanly on SIGINT.
       client-ready =
