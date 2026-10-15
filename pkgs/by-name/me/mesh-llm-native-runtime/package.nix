@@ -12,6 +12,7 @@
   python3,
   shaderc,
   nixosTests,
+  rustPlatform,
   spirv-headers,
   vulkan-headers,
   vulkan-loader,
@@ -36,6 +37,8 @@
     # The bNNNNN tag of the llama.cpp commit this release pins.
     llamaCppHash = "sha256-fq8kOKa03uPtoXe5Oi1I3vA5MxJw1J7BFzKXusC4ojc=";
     llamaCppBuild = "11165";
+    # Cargo vendor hash of the release's lockfile (mesh-llm and the automation tool).
+    cargoHash = "sha256-wljim/MXOfdwHwEkbiY056vQpXmN6jwqnOuLNKPpCTs=";
   },
 }:
 
@@ -215,6 +218,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
         export HIPCC=${rocmPackages.clr}/bin/hipcc
         export LLAMA_STAGE_AMDGPU_TARGETS="${lib.concatStringsSep ";" rocmGpuTargets}"
       ''}
+      # The script runs upstream's automation (manifest, versions, runtime deps).
+      export MESH_LLM_AUTOMATION_BIN=${lib.getExe finalAttrs.passthru.automation}
       mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
       LLAMA_STAGE_BUILD_DIR=$PWD/core \
         bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
@@ -233,6 +238,23 @@ effectiveStdenv.mkDerivation (finalAttrs: {
 
   passthru = {
     inherit backend;
+    # Upstream's automation tool (xtask), which package-native-runtime.sh calls.
+    automation = rustPlatform.buildRustPackage {
+      pname = "mesh-llm-automation";
+      inherit (finalAttrs) version;
+      src = finalAttrs.passthru.meshLlmSrc;
+      inherit (release) cargoHash;
+      cargoBuildFlags = [
+        "--package"
+        "xtask"
+        "--bin"
+        "xtask"
+      ];
+      # Upstream's cargo config routes builds through sccache and its own linker drivers.
+      postPatch = "rm .cargo/config.toml";
+      doCheck = false;
+      meta.mainProgram = "xtask";
+    };
     # Environment for the programs that load this bundle (mesh-llm, buzz-desktop).
     hostEnvironment = lib.optionalAttrs cudaSupport {
       # mesh-llm wants a detected CUDA toolkit; the bundle finds CUDA via its runpath.
@@ -246,6 +268,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     };
     # llama.cpp release number of src (its bNNNNN tag), reported by the library.
     inherit (release) llamaCppBuild;
+    # Cargo vendor hash of src's lockfile, shared with mesh-llm.
+    inherit (release) cargoHash;
 
     # Serves a model with mesh-llm and this runtime.
     tests.nixos = nixosTests.mesh-llm;
