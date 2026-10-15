@@ -29,8 +29,10 @@
 
   # The MeshLLM release; buzz-desktop overrides it with the one it embeds.
   release ? {
-    version = "0.78.1";
-    hash = "sha256-Au69tcuHXDyGUjRNOS+mGu3nhnaPQQqfoSVJS6jqqF0=";
+    # PREP: upstream main until the next release; then version = "<x.y.z>" and drop rev.
+    version = "0.78.1-unstable-2026-10-15";
+    rev = "f27387e8bb5ddd5b5e3810b0a358141007f14588";
+    hash = "sha256-p+QQ88cZKOyDBM2vwPi7UnEgiYBm8tWJMOH5T+RlBHY=";
     # The bNNNNN tag of the llama.cpp commit this release pins.
     llamaCppHash = "sha256-fq8kOKa03uPtoXe5Oi1I3vA5MxJw1J7BFzKXusC4ojc=";
     llamaCppBuild = "11165";
@@ -129,7 +131,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   postPatch = ''
     # Apply the patch queue as upstream's scripts/prepare-llama.sh does
     # (core, model_support, generated; `git am --3way`).
-    llamaDir=${finalAttrs.passthru.meshLlmSrc}/third_party/llama.cpp
+    llamaDir=${finalAttrs.passthru.meshLlmSrc}/skippy/llama_cpp
     patchDir=$llamaDir/patches
     queue=("$patchDir"/*.patch)
     for set in model_support generated; do
@@ -190,28 +192,23 @@ effectiveStdenv.mkDerivation (finalAttrs: {
 
   # Package with upstream's script, so the manifest stays upstream's format. It runs
   # last, after the postFixupHooks that patch runpaths, because mesh-llm checksums
-  # every bundled file. It skips skippy-package-builder, an offline publishing tool
-  # mesh-llm doesn't call. https://github.com/Mesh-LLM/mesh-llm/pull/2392 turns
-  # both patches below into flags.
+  # every bundled file. --keep-runpath keeps the store paths after $ORIGIN;
+  # --no-model-package-tool skips skippy-package-builder, an offline publishing tool
+  # mesh-llm doesn't call.
   preFixup = ''
     packageNativeRuntime() {
       cp -r ${finalAttrs.passthru.meshLlmSrc} mesh-llm && chmod -R u+w mesh-llm
-      # Keep the store paths after $ORIGIN (upstream sets $ORIGIN only); the GPU
-      # benchmark tool gets the runpath of the backend it measures.
-      substituteInPlace mesh-llm/scripts/package-native-runtime.sh \
-        --replace-fail $'\nbuild_model_package_tool\n' $'\n' \
-        --replace-fail 'patchelf --set-rpath "\$ORIGIN"' 'patchelf --set-rpath "\$ORIGIN:$(patchelf --print-rpath "$library")"' \
-        --replace-fail 'patchelf --set-rpath "\$ORIGIN/../lib"' 'patchelf --set-rpath "\$ORIGIN/../lib:$GPU_BACKEND_RUNPATH"'
       ${lib.optionalString (gpuBackendLib != null) ''
-        export GPU_BACKEND_RUNPATH=$(patchelf --print-rpath $out/lib/ggml-backends/${gpuBackendLib})
+        # The GPU benchmark tool links with the runpath of the backend it measures
+        # (driver libraries included); --keep-runpath keeps it after $ORIGIN.
+        NIX_LDFLAGS+=" -rpath $(patchelf --print-rpath $out/lib/ggml-backends/${gpuBackendLib})"
       ''}
       ${lib.optionalString cudaSupport ''
         # Upstream's CUDA bundles carry libcudart and its license for that tool.
         export CUDA_LIBRARY_PATH=${cudaPackages.cuda_cudart}/lib
         export MESH_LLM_CUDA_LICENSE_FILE=${cudaPackages.cuda_cudart}/LICENSE
-        # Upstream builds the tool PTX-only, which drivers older than the toolkit
-        # can't load. https://github.com/Mesh-LLM/mesh-llm/pull/2303
-        export NVCC_APPEND_FLAGS="${cudaPackages.flags.gencodeString}"
+        # The tool's GPU architectures, as the backend's.
+        export LLAMA_STAGE_CUDA_ARCHITECTURES="${cudaPackages.flags.cmakeCudaArchitecturesString}"
       ''}
       ${lib.optionalString rocmSupport ''
         # The GPU benchmark tool, built with hipcc for the same GPUs as the backend.
@@ -220,7 +217,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       ''}
       mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
       LLAMA_STAGE_BUILD_DIR=$PWD/core \
-        bash mesh-llm/scripts/package-native-runtime.sh --backend ${backend} --out $out/share/mesh-llm/runtimes
+        bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
+          --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes
       rm $out/share/mesh-llm/runtimes/*.tar.gz*
 
       # A distinct id and the top rank: mesh-llm uses this bundle instead of
@@ -236,19 +234,14 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   passthru = {
     inherit backend;
     # Environment for the programs that load this bundle (mesh-llm, buzz-desktop).
-    hostEnvironment =
-      lib.optionalAttrs effectiveStdenv.hostPlatform.isGnu {
-        # mesh-llm compares against the system's glibc, but the bundle runs on this one.
-        MESH_LLM_GLIBC_VERSION = lib.versions.majorMinor effectiveStdenv.cc.libc.version;
-      }
-      // lib.optionalAttrs cudaSupport {
-        # mesh-llm wants a detected CUDA toolkit; the bundle finds CUDA via its runpath.
-        MESH_LLM_CUDA_TOOLKIT_MAJOR = cudaPackages.cudaMajorVersion;
-      };
+    hostEnvironment = lib.optionalAttrs cudaSupport {
+      # mesh-llm wants a detected CUDA toolkit; the bundle finds CUDA via its runpath.
+      MESH_LLM_CUDA_TOOLKIT_MAJOR = cudaPackages.cudaMajorVersion;
+    };
     meshLlmSrc = fetchFromGitHub {
       owner = "Mesh-LLM";
       repo = "mesh-llm";
-      tag = "v${finalAttrs.version}";
+      ${if release ? rev then "rev" else "tag"} = release.rev or "v${finalAttrs.version}";
       inherit (release) hash;
     };
     # llama.cpp release number of src (its bNNNNN tag), reported by the library.
