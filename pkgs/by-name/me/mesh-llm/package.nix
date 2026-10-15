@@ -60,7 +60,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   inherit (mesh-llm-native-runtime) version;
   src = mesh-llm-native-runtime.meshLlmSrc;
 
-  cargoHash = "sha256-BMLcQnYgOSshqp+y16zomAUdsGX4bAPrv4iYYx96T3g=";
+  cargoHash = "sha256-wljim/MXOfdwHwEkbiY056vQpXmN6jwqnOuLNKPpCTs=";
   cargoBuildFlags = [
     "--package"
     "mesh-llm"
@@ -68,7 +68,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoTestFlags = finalAttrs.cargoBuildFlags;
 
   # The web console, embedded into the binary by the default web-ui feature.
-  pnpmRoot = "crates/mesh-llm-ui";
+  pnpmRoot = "mesh/crates/mesh-llm-ui";
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     sourceRoot = "${finalAttrs.src.name}/${finalAttrs.pnpmRoot}";
@@ -106,7 +106,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     rm .cargo/config.toml
 
     # Use nixpkgs' protoc instead of the prebuilt one from protoc-bin-vendored.
-    substituteInPlace crates/{mesh-llm-plugin,skippy-protocol}/build.rs \
+    substituteInPlace mesh/crates/mesh-llm-plugin/build.rs skippy/crates/skippy-protocol/build.rs \
       --replace-fail 'protoc_bin_vendored::protoc_bin_path().expect("vendored protoc")' \
         'std::path::PathBuf::from(std::env::var("PROTOC").expect("PROTOC"))'
   '';
