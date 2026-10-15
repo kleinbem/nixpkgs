@@ -14,5 +14,6 @@ version="$(curl -sSfL ${GITHUB_TOKEN:+-u ":$GITHUB_TOKEN"} \
 
 pkgs/by-name/me/mesh-llm-native-runtime/update-release.sh mesh-llm-native-runtime "$version"
 
-# mesh-llm takes its version and source from the runtime; refresh its own hashes.
+# mesh-llm takes its version, source and cargo hash from the runtime; refresh the
+# web console's dependency hash.
 nix-update mesh-llm --version skip
