@@ -60,7 +60,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   inherit (mesh-llm-native-runtime) version;
   src = mesh-llm-native-runtime.meshLlmSrc;
 
-  cargoHash = "sha256-wljim/MXOfdwHwEkbiY056vQpXmN6jwqnOuLNKPpCTs=";
+  inherit (mesh-llm-native-runtime) cargoHash;
   cargoBuildFlags = [
     "--package"
     "mesh-llm"
