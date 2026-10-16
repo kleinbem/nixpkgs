@@ -209,7 +209,10 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     ''}
     ${lib.optionalString cudaSupport ''
       # Upstream's CUDA bundles carry libcudart and its license for that tool.
-      export CUDA_LIBRARY_PATH=${cudaPackages.cuda_cudart}/lib
+      # From a writable copy: upstream's automation opens the copied library for
+      # writing to set its mtime, which fails for read-only store files.
+      cp -rL --no-preserve=mode ${cudaPackages.cuda_cudart}/lib cudart-lib
+      export CUDA_LIBRARY_PATH=$PWD/cudart-lib
       export MESH_LLM_CUDA_LICENSE_FILE=${cudaPackages.cuda_cudart}/LICENSE
       # The tool's GPU architectures, as the backend's.
       export LLAMA_STAGE_CUDA_ARCHITECTURES="${cudaPackages.flags.cmakeCudaArchitecturesString}"
