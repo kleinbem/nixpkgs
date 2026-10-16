@@ -194,46 +194,44 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   ];
 
   # Package with upstream's script, so the manifest stays upstream's format. It runs
-  # last, after the postFixupHooks that patch runpaths, because mesh-llm checksums
-  # every bundled file. --keep-runpath keeps the store paths after $ORIGIN;
-  # --no-model-package-tool skips skippy-package-builder, an offline publishing tool
-  # mesh-llm doesn't call.
-  preFixup = ''
-    packageNativeRuntime() {
-      cp -r ${finalAttrs.passthru.meshLlmSrc} mesh-llm && chmod -R u+w mesh-llm
-      ${lib.optionalString (gpuBackendLib != null) ''
-        # The GPU benchmark tool links with the runpath of the backend it measures
-        # (driver libraries included); --keep-runpath keeps it after $ORIGIN.
-        NIX_LDFLAGS+=" -rpath $(patchelf --print-rpath $out/lib/ggml-backends/${gpuBackendLib})"
-      ''}
-      ${lib.optionalString cudaSupport ''
-        # Upstream's CUDA bundles carry libcudart and its license for that tool.
-        export CUDA_LIBRARY_PATH=${cudaPackages.cuda_cudart}/lib
-        export MESH_LLM_CUDA_LICENSE_FILE=${cudaPackages.cuda_cudart}/LICENSE
-        # The tool's GPU architectures, as the backend's.
-        export LLAMA_STAGE_CUDA_ARCHITECTURES="${cudaPackages.flags.cmakeCudaArchitecturesString}"
-      ''}
-      ${lib.optionalString rocmSupport ''
-        # The GPU benchmark tool, built with hipcc for the same GPUs as the backend.
-        export HIPCC=${rocmPackages.clr}/bin/hipcc
-        export LLAMA_STAGE_AMDGPU_TARGETS="${lib.concatStringsSep ";" rocmGpuTargets}"
-      ''}
-      # The script runs upstream's automation (manifest, versions, runtime deps).
-      export MESH_LLM_AUTOMATION_BIN=${lib.getExe finalAttrs.passthru.automation}
-      mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
-      LLAMA_STAGE_BUILD_DIR=$PWD/core \
-        bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
-          --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes
-      rm $out/share/mesh-llm/runtimes/*.tar.gz*
+  # in its own phase after fixupPhase, because mesh-llm checksums every bundled file
+  # and fixup hooks (e.g. CUDA's removeStubsFromRunpath) would rewrite them.
+  # --keep-runpath keeps the store paths after $ORIGIN; --no-model-package-tool skips
+  # skippy-package-builder, an offline publishing tool mesh-llm doesn't call.
+  postPhases = [ "packageNativeRuntimePhase" ];
+  packageNativeRuntimePhase = ''
+    cp -r ${finalAttrs.passthru.meshLlmSrc} mesh-llm && chmod -R u+w mesh-llm
+    ${lib.optionalString (gpuBackendLib != null) ''
+      # The GPU benchmark tool links with the runpath of the backend it measures
+      # (driver libraries included); --keep-runpath keeps it after $ORIGIN.
+      NIX_LDFLAGS+=" -rpath $(patchelf --print-rpath $out/lib/ggml-backends/${gpuBackendLib})"
+    ''}
+    ${lib.optionalString cudaSupport ''
+      # Upstream's CUDA bundles carry libcudart and its license for that tool.
+      export CUDA_LIBRARY_PATH=${cudaPackages.cuda_cudart}/lib
+      export MESH_LLM_CUDA_LICENSE_FILE=${cudaPackages.cuda_cudart}/LICENSE
+      # The tool's GPU architectures, as the backend's.
+      export LLAMA_STAGE_CUDA_ARCHITECTURES="${cudaPackages.flags.cmakeCudaArchitecturesString}"
+    ''}
+    ${lib.optionalString rocmSupport ''
+      # The GPU benchmark tool, built with hipcc for the same GPUs as the backend.
+      export HIPCC=${rocmPackages.clr}/bin/hipcc
+      export LLAMA_STAGE_AMDGPU_TARGETS="${lib.concatStringsSep ";" rocmGpuTargets}"
+    ''}
+    # The script runs upstream's automation (manifest, versions, runtime deps).
+    export MESH_LLM_AUTOMATION_BIN=${lib.getExe finalAttrs.passthru.automation}
+    mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
+    LLAMA_STAGE_BUILD_DIR=$PWD/core \
+      bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
+        --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes
+    rm $out/share/mesh-llm/runtimes/*.tar.gz*
 
-      # A distinct id and the top rank: mesh-llm uses this bundle instead of
-      # downloading upstream's.
-      for m in $out/share/mesh-llm/runtimes/*/manifest.json; do
-        jq '.runtime.id += "-nixpkgs" | .runtime.rank = 1000' "$m" > "$m.tmp"
-        mv "$m.tmp" "$m"
-      done
-    }
-    postFixupHooks+=(packageNativeRuntime)
+    # A distinct id and the top rank: mesh-llm uses this bundle instead of
+    # downloading upstream's.
+    for m in $out/share/mesh-llm/runtimes/*/manifest.json; do
+      jq '.runtime.id += "-nixpkgs" | .runtime.rank = 1000' "$m" > "$m.tmp"
+      mv "$m.tmp" "$m"
+    done
   '';
 
   passthru = {
