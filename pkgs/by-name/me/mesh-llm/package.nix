@@ -146,6 +146,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
+  # PREP: an unstable version reports only its release; drop with the next release.
+  preVersionCheck = "version=${lib.head (lib.splitString "-" finalAttrs.version)}";
 
   passthru = {
     # The bundles, their environment and the programs mesh-llm runs, for programs
