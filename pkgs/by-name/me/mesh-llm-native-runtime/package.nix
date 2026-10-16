@@ -31,7 +31,8 @@
   # The MeshLLM release; buzz-desktop overrides it with the one it embeds.
   release ? {
     # PREP: upstream main until the next release; then version = "<x.y.z>" and drop rev.
-    version = "0.78.1-unstable-2026-10-15";
+    # main reports 0.78.0: v0.78.1 was tagged on a release branch.
+    version = "0.78.0-unstable-2026-10-15";
     rev = "f27387e8bb5ddd5b5e3810b0a358141007f14588";
     hash = "sha256-p+QQ88cZKOyDBM2vwPi7UnEgiYBm8tWJMOH5T+RlBHY=";
     # The bNNNNN tag of the llama.cpp commit this release pins.
