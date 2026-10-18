@@ -73,7 +73,7 @@ let
     .${backend} or null;
 in
 effectiveStdenv.mkDerivation (finalAttrs: {
-  pname = "mesh-llm-native-runtime";
+  pname = "skippy-native-runtime";
   inherit (release) version;
 
   __structuredAttrs = true;
@@ -281,14 +281,14 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   };
 
   meta = {
-    description = "Patched llama.cpp libraries that MeshLLM loads for inference (${backend} backend)";
+    description = "Patched llama.cpp libraries that Skippy and MeshLLM load for inference (${backend} backend)";
     longDescription = ''
-      The inference engine of mesh-llm and buzz-desktop, which bundle it;
+      The inference engine of skippy, mesh-llm and buzz-desktop, which bundle it;
       install those instead. The backend is chosen with `cudaSupport`,
-      `rocmSupport`, `vulkanSupport` (also as mesh-llm-native-runtime-vulkan)
+      `rocmSupport`, `vulkanSupport` (also as skippy-native-runtime-vulkan)
       and `metalSupport` (the default on macOS), otherwise it is CPU only.
     '';
-    homepage = "https://github.com/Mesh-LLM/mesh-llm";
+    homepage = "https://github.com/Mesh-LLM/mesh-llm/tree/main/skippy";
     changelog = "https://github.com/Mesh-LLM/mesh-llm/releases/tag/v${finalAttrs.version}";
     # llama.cpp is MIT; MeshLLM's patches are MIT or Apache-2.0. CUDA bundles also
     # carry a copy of NVIDIA's libcudart.

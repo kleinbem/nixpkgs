@@ -8,7 +8,7 @@
   pkg-config,
   versionCheckHook,
   mesh-llm,
-  mesh-llm-native-runtime,
+  skippy-native-runtime,
 
   config,
   cudaSupport ? config.cudaSupport,
@@ -28,8 +28,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   __structuredAttrs = true;
   strictDeps = true;
   # Skippy is released with MeshLLM, from the same source and tag.
-  inherit (mesh-llm-native-runtime) version;
-  src = mesh-llm-native-runtime.meshLlmSrc;
+  inherit (skippy-native-runtime) version;
+  src = skippy-native-runtime.meshLlmSrc;
   inherit (mesh-llm) cargoDeps;
 
   cargoBuildFlags = [
@@ -100,6 +100,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ];
     maintainers = with lib.maintainers; [ kleinbem ];
     mainProgram = "skippy";
-    inherit (mesh-llm-native-runtime.meta) platforms;
+    inherit (skippy-native-runtime.meta) platforms;
   };
 })

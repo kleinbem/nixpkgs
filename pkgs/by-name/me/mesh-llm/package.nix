@@ -14,7 +14,7 @@
   python3,
   curl,
   versionCheckHook,
-  mesh-llm-native-runtime,
+  skippy-native-runtime,
   rocmPackages,
   nixosTests,
   runCommand,
@@ -28,7 +28,7 @@ let
   # The llama.cpp runtime bundles mesh-llm picks from, built here so nothing is downloaded.
   runtime =
     args:
-    mesh-llm-native-runtime.override (
+    skippy-native-runtime.override (
       {
         cudaSupport = false;
         rocmSupport = false;
@@ -57,10 +57,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
   __structuredAttrs = true;
   strictDeps = true;
   # The runtime is built from the same MeshLLM release.
-  inherit (mesh-llm-native-runtime) version;
-  src = mesh-llm-native-runtime.meshLlmSrc;
+  inherit (skippy-native-runtime) version;
+  src = skippy-native-runtime.meshLlmSrc;
 
-  inherit (mesh-llm-native-runtime) cargoHash;
+  inherit (skippy-native-runtime) cargoHash;
   cargoBuildFlags = [
     "--package"
     "mesh-llm"
@@ -153,7 +153,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # The bundles, their environment and the programs mesh-llm runs, for programs
     # that embed mesh-llm (buzz-desktop).
     inherit runtimes runtimeEnvironment runtimePrograms;
-    # Also updates mesh-llm-native-runtime, which pins the release.
+    # Also updates skippy-native-runtime, which pins the release.
     updateScript = ./update.sh;
     tests = {
       nixos = nixosTests.mesh-llm;
@@ -223,6 +223,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ];
     maintainers = with lib.maintainers; [ kleinbem ];
     mainProgram = "mesh-llm";
-    inherit (mesh-llm-native-runtime.meta) platforms;
+    inherit (skippy-native-runtime.meta) platforms;
   };
 })

@@ -4,8 +4,8 @@
 
 # Usage: update-release.sh ATTR VERSION [FILE]
 #
-# Points the mesh-llm-native-runtime `release` of ATTR (for example
-# mesh-llm-native-runtime) at MeshLLM VERSION and the llama.cpp release
+# Points the skippy-native-runtime `release` of ATTR (for example
+# skippy-native-runtime) at MeshLLM VERSION and the llama.cpp release
 # (bNNNNN tag) that VERSION pins, then lets nix-update refresh the source
 # hashes and the cargo vendor hash (shared with mesh-llm and the automation
 # tool). FILE is where that release is written, if not in ATTR's package.nix.
