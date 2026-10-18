@@ -89,13 +89,8 @@ in
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
-      # MeshLLM runs hostname to find the node's host name; drop it once
-      # https://github.com/Mesh-LLM/mesh-llm/pull/2444 is released.
-      # It asks nvidia-smi for the NVIDIA GPUs and their compute capability.
-      path = [
-        pkgs.hostname
-      ]
-      ++ lib.optional config.hardware.nvidia.enabled config.hardware.nvidia.package.bin;
+      # MeshLLM asks nvidia-smi for the NVIDIA GPUs and their compute capability.
+      path = lib.optional config.hardware.nvidia.enabled config.hardware.nvidia.package.bin;
 
       # MeshLLM keeps its identity, configuration and model cache in HOME.
       environment.HOME = "/var/lib/mesh-llm";
