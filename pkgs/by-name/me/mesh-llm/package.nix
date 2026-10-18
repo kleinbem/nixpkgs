@@ -104,16 +104,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
   postPatch = ''
     # Upstream's cargo config routes builds through sccache and its own linker drivers.
     rm .cargo/config.toml
-
-    # Use nixpkgs' protoc instead of the prebuilt one from protoc-bin-vendored.
-    substituteInPlace mesh/crates/mesh-llm-plugin/build.rs skippy/crates/skippy-protocol/build.rs \
-      --replace-fail 'protoc_bin_vendored::protoc_bin_path().expect("vendored protoc")' \
-        'std::path::PathBuf::from(std::env::var("PROTOC").expect("PROTOC"))'
   '';
 
   env = {
     # aws-lc-sys: its CMake builder, as nixpkgs' default crate overrides use.
     AWS_LC_SYS_CMAKE_BUILDER = 1;
+    # nixpkgs' protoc instead of the prebuilt one from protoc-bin-vendored.
     PROTOC = lib.getExe' buildPackages.protobuf "protoc";
   };
 
