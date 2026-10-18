@@ -124,11 +124,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
     wrapProgram $out/bin/mesh-llm ${
       lib.escapeShellArgs (
         lib.concatLists (
-          lib.mapAttrsToList (name: value: [
-            "--set-default"
-            name
-            value
-          ]) runtimeEnvironment
+          lib.mapAttrsToList
+            (name: value: [
+              "--set-default"
+              name
+              value
+            ])
+            (
+              runtimeEnvironment
+              // {
+                # nixpkgs updates mesh-llm, so it doesn't look for newer releases itself;
+                # MESH_LLM_NO_UPDATE_CHECK=0 turns the checks back on.
+                MESH_LLM_NO_UPDATE_CHECK = "1";
+              }
+            )
         )
         ++ lib.optionals (runtimePrograms != [ ]) [
           "--prefix"
