@@ -34,6 +34,7 @@ Add the CUDA runtime for this service:
 ```
 
 Use `pkgs.mesh-llm-rocm` for ROCm.
+The service uses only the runtimes the package bundles; set {option}`services.mesh-llm.allowRuntimeDownloads` to let MeshLLM download a prebuilt runtime when none of them fits.
 `pkgs.mesh-llm` also adds them when `cudaSupport` or `rocmSupport` is set in [](#opt-nixpkgs.config).
 CUDA is unfree and needs `nixpkgs.config.allowUnfree`.
 With the NVIDIA driver enabled ([](#opt-hardware.nvidia.enabled)), `nvidia-smi` is on the service's `PATH`, so MeshLLM can detect the GPUs.

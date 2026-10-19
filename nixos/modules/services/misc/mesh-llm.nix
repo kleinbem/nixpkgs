@@ -64,6 +64,16 @@ in
       '';
     };
 
+    allowRuntimeDownloads = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Whether MeshLLM may download prebuilt native runtimes at startup when
+        none of the package's runtimes fits the host. Off, it uses only the
+        runtimes built by Nix and never asks GitHub for its runtime catalog.
+      '';
+    };
+
     ownerKeyFile = lib.mkOption {
       type = lib.types.nullOr lib.types.externalPath;
       default = null;
@@ -107,8 +117,13 @@ in
       # MeshLLM asks nvidia-smi for the NVIDIA GPUs and their compute capability.
       path = lib.optional config.hardware.nvidia.enabled config.hardware.nvidia.package.bin;
 
-      # MeshLLM keeps its identity, configuration and model cache in HOME.
-      environment.HOME = "/var/lib/mesh-llm";
+      environment = {
+        # MeshLLM keeps its identity, configuration and model cache in HOME.
+        HOME = "/var/lib/mesh-llm";
+      }
+      // lib.optionalAttrs (!cfg.allowRuntimeDownloads) {
+        MESH_LLM_NO_RUNTIME_DOWNLOAD = "1";
+      };
 
       preStart = lib.optionalString (cfg.settings != { }) ''
         install -D -m 0600 ${configFile} "$HOME/.mesh-llm/config.toml"
