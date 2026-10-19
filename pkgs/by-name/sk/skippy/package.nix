@@ -4,8 +4,12 @@
   buildPackages,
   cacert,
   cmake,
+  curl,
+  fetchurl,
+  jq,
   makeBinaryWrapper,
   pkg-config,
+  runCommand,
   versionCheckHook,
   mesh-llm,
   skippy-native-runtime,
@@ -82,6 +86,43 @@ rustPlatform.buildRustPackage (finalAttrs: {
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
   inherit (mesh-llm) preVersionCheck;
+
+  passthru.tests.serve =
+    runCommand "skippy-serve"
+      {
+        nativeBuildInputs = [
+          finalAttrs.finalPackage
+          # skippy builds an HTTPS client at startup and exits without a CA
+          # bundle, even when it serves a local model.
+          cacert
+          curl
+          jq
+        ];
+        # The 1 MB model of the NixOS test.
+        model = fetchurl {
+          url = "https://huggingface.co/ggml-org/models-moved/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories260K.gguf";
+          hash = "sha256-Jwy6G9UQn0LQM1D2BAYCRWBGTbFzwOOH2R8EJtO9JW0=";
+        };
+        __darwinAllowLocalNetworking = true;
+      }
+      ''
+        # Serves a model with the bundled runtime, offline.
+        export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache
+        skippy serve --model "$model" --bind-addr 127.0.0.1:19337 > serve.log 2>&1 &
+        pid=$!
+        for _ in $(seq 240); do
+          curl -fsS http://127.0.0.1:19337/v1/models 2>/dev/null | grep -q '"id"' && break
+          kill -0 $pid || { cat serve.log; echo "skippy exited before serving" >&2; exit 1; }
+          sleep 0.5
+        done
+        id=$(curl -fsS http://127.0.0.1:19337/v1/models | jq -r '.data[0].id')
+        curl -fsS http://127.0.0.1:19337/v1/completions -H 'Content-Type: application/json' \
+          -d "{\"model\": \"$id\", \"prompt\": \"Once upon a time\", \"max_tokens\": 8}" \
+          | jq -e '.choices[0].text | length > 0'
+        kill -INT $pid
+        wait $pid || true
+        touch $out
+      '';
 
   meta = {
     description = "Serve a language model locally behind OpenAI- and Anthropic-compatible APIs";
