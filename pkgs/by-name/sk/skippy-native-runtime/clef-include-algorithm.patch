@@ -1,0 +1,12 @@
+diff --git a/src/models/clef.cpp b/src/models/clef.cpp
+index 9399f40a1..036185d48 100644
+--- a/src/models/clef.cpp
++++ b/src/models/clef.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "llama-ext.h"
+ 
++#include <algorithm>
+ #include <cmath>
+ 
+ void llama_model_clef::load_arch_hparams(llama_model_loader & ml) {
