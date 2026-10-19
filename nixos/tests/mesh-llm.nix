@@ -6,7 +6,15 @@
 
   nodes.machine =
     { pkgs, ... }:
+    let
+      # A throwaway owner identity for the test.
+      ownerKeystore = pkgs.runCommand "mesh-llm-test-owner-keystore" { } ''
+        HOME=$TMPDIR ${lib.getExe pkgs.mesh-llm} auth init --no-passphrase
+        cp $TMPDIR/.mesh-llm/owner-keystore.json $out
+      '';
+    in
     {
+      environment.etc."mesh-llm/owner-keystore.json".source = ownerKeystore;
       services.mesh-llm = {
         enable = true;
         settings = {
@@ -23,6 +31,7 @@
         };
         meshPort = 7842;
         openFirewall = true;
+        ownerKeyFile = "/etc/mesh-llm/owner-keystore.json";
       };
       environment.systemPackages = [
         pkgs.curl
@@ -52,6 +61,13 @@
         machine.succeed(
             f"curl -fsS http://127.0.0.1:9337/v1/completions -H 'Content-Type: application/json' -d '{request}'"
             " | jq -e '.choices[0].text | length > 0'"
+        )
+
+    with subtest("the node is attested by the owner key"):
+        owner = machine.succeed("jq -r .owner_id /etc/mesh-llm/owner-keystore.json").strip()
+        machine.succeed(
+            "curl -fsS http://127.0.0.1:3131/api/status"
+            f" | jq -e '.owner.status == \"verified\" and .owner.owner_id == \"{owner}\"'"
         )
 
     with subtest("settings are installed in the node's home"):

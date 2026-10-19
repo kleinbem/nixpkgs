@@ -75,6 +75,31 @@ Then open TCP ports 9337 and 3131 in {option}`networking.firewall.allowedTCPPort
 On servers that don't need the console, add `--headless`.
 The management API stays available.
 
+## Own the node {#module-services-mesh-llm-owner}
+
+An owner identity attests that a node belongs to you.
+Meshes can then admit only owned nodes, and the console can save configuration.
+Create a keystore with `mesh-llm auth init` and give it to the service:
+
+```nix
+{
+  services.mesh-llm = {
+    ownerKeyFile = "/run/secrets/mesh-llm-owner-keystore.json";
+    extraArgs = [
+      "--trust-policy"
+      "allowlist"
+      "--trust-owner"
+      "<owner-id>"
+    ];
+  };
+}
+```
+
+`mesh-llm auth status` shows the owner ID.
+The service doesn't start if it can't load the keystore.
+For an encrypted keystore, set `MESH_LLM_OWNER_PASSPHRASE` in {option}`services.mesh-llm.environmentFile`.
+Configuration saved in the console lasts until the next start when {option}`services.mesh-llm.settings` is set.
+
 ## Add plugins {#module-services-mesh-llm-plugins}
 
 Add plugins as `[[plugin]]` entries in {option}`services.mesh-llm.settings`, with `command` pointing at the plugin's executable.

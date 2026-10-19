@@ -64,6 +64,21 @@ in
       '';
     };
 
+    ownerKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.externalPath;
+      default = null;
+      example = "/run/secrets/mesh-llm-owner-keystore.json";
+      description = ''
+        Owner keystore created with `mesh-llm auth init`. It attests that this
+        node belongs to its owner, for meshes that admit only owned nodes
+        (`--trust-policy` in [](#opt-services.mesh-llm.extraArgs)), and lets
+        the console save configuration. The service reads it as a systemd
+        credential and doesn't start if it can't load it. Put the passphrase
+        of an encrypted keystore in `MESH_LLM_OWNER_PASSPHRASE` in
+        [](#opt-services.mesh-llm.environmentFile).
+      '';
+    };
+
     extraArgs = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
@@ -112,9 +127,16 @@ in
             "--bind-port"
             (toString cfg.meshPort)
           ]
+          ++ lib.optionals (cfg.ownerKeyFile != null) [
+            "--owner-key"
+            "%d/owner-keystore"
+            # Fail instead of starting without the owner's attestation.
+            "--owner-required"
+          ]
           ++ cfg.extraArgs
         );
         EnvironmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
+        LoadCredential = lib.optional (cfg.ownerKeyFile != null) "owner-keystore:${cfg.ownerKeyFile}";
         DynamicUser = true;
         StateDirectory = "mesh-llm";
         WorkingDirectory = "/var/lib/mesh-llm";
