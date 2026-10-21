@@ -18,6 +18,7 @@
   rocmPackages,
   nixosTests,
   runCommand,
+  lldb,
 
   config,
   cudaSupport ? config.cudaSupport,
@@ -177,6 +178,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
             nativeBuildInputs = [
               finalAttrs.finalPackage
               cacert
+              lldb
             ];
             # The client binds its mesh and console ports on localhost.
             __darwinAllowLocalNetworking = true;
@@ -196,7 +198,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
             }
             for _ in $(seq 450); do
               ready && break
-              kill -0 $pid || { cat client.jsonl; echo "client exited before readiness" >&2; exit 1; }
+              kill -0 $pid || { cat client.jsonl; echo "client exited before readiness" >&2; timeout 120 lldb --batch -o run -o "bt all" -o "image list" -- $(type -P mesh-llm) --log-format json --port 19337 --console 13131 --no-console client 2>&1 | grep -v '"event_system_health"' | tail -150; exit 1; }
               sleep 0.1
             done
             ready || { cat client.jsonl; echo "client not ready after 45s" >&2; exit 1; }
