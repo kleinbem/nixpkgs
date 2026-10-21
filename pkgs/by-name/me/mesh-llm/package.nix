@@ -179,7 +179,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
               cacert
             ];
             # In the macOS build sandbox mesh-llm crashes at startup; without the
-            # sandbox the check passes there too.
+            # sandbox the check passes there too. Not diagnosed yet; an upstream
+            # issue or PR will follow, then run the check on macOS as well.
             meta.platforms = lib.platforms.linux;
           }
           ''
