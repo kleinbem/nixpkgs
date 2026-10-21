@@ -55,7 +55,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     pkg-config
   ];
 
-  # Serve tests build an HTTPS client, which loads the CA bundle.
+  # The serve and model-cache tests build an HTTPS client, which fails without a
+  # CA bundle. Fixed upstream by https://github.com/Mesh-LLM/mesh-llm/pull/2491
+  # and https://github.com/Mesh-LLM/mesh-llm/pull/2498; drop with a release
+  # that has both.
   nativeCheckInputs = [ cacert ];
 
   inherit (mesh-llm) postPatch env;
@@ -93,7 +96,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
         nativeBuildInputs = [
           finalAttrs.finalPackage
           # skippy builds an HTTPS client at startup and exits without a CA
-          # bundle, even when it serves a local model.
+          # bundle, even when it serves a local model. Fixed upstream by
+          # https://github.com/Mesh-LLM/mesh-llm/pull/2491; drop with a release
+          # that has it.
           cacert
           curl
           jq
