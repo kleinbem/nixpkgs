@@ -2,6 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  fetchpatch2,
   autoAddDriverRunpath,
   cmake,
   ninja,
@@ -90,10 +91,19 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   patches = [
     # GGML_CPU_ALL_VARIANTS adds two armv9.2 variants built with +sme, which the
     # CUDA 12 host compiler (GCC 13) rejects, failing the whole CUDA build on
-    # aarch64. Probe the compiler and skip them. Upstream issue:
-    # https://github.com/ggml-org/llama.cpp/issues/17403; a PR with this patch
-    # will follow, then fetch it from there.
-    ./ggml-cpu-all-variants-probe-sme.patch
+    # aarch64. Probe each variant's -march and skip the unsupported ones; from
+    # https://github.com/ggml-org/llama.cpp/pull/26103, drop with a llama.cpp
+    # pin that has it.
+    (fetchpatch2 {
+      name = "ggml-cpu-skip-unsupported-arm-variants.patch";
+      url = "https://github.com/ggml-org/llama.cpp/commit/22d23a9c425e083d7a8d2dc8358163f6e1843c5c.patch?full_index=1";
+      hash = "sha256-vA1fCMeiEreNcuFxhQhs+nWNvKQspFRqbzyga4DROG8=";
+    })
+    (fetchpatch2 {
+      name = "ggml-cpu-probe-c-compiler-for-arm-variants.patch";
+      url = "https://github.com/ggml-org/llama.cpp/commit/c0c2fab263d14c0db4c71d325ab1002489f14fb6.patch?full_index=1";
+      hash = "sha256-I1ZTMNkgK8qEmRs1R78xikUq9qbLyQ9pUTURGfznUtc=";
+    })
   ];
 
   outputs = [
