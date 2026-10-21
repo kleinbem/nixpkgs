@@ -180,6 +180,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
             ];
             # The client binds its mesh and console ports on localhost.
             __darwinAllowLocalNetworking = true;
+            # It probes the GPU through Metal at startup, like ollama.
+            sandboxProfile = ''
+              (allow file-read* (subpath "/System/Library/Extensions"))
+              (allow iokit-open
+                (iokit-user-client-class "AGXDeviceUserClient")
+                (iokit-user-client-class "IOSurfaceRootUserClient"))
+              (allow mach-lookup (global-name "com.apple.windowserver.active"))
+            '';
           }
           ''
             export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
