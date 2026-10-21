@@ -90,8 +90,9 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   patches = [
     # GGML_CPU_ALL_VARIANTS adds two armv9.2 variants built with +sme, which the
     # CUDA 12 host compiler (GCC 13) rejects, failing the whole CUDA build on
-    # aarch64. Probe the compiler and skip them. Upstream: ggml-org/llama.cpp#17403;
-    # a PR with this change is in preparation.
+    # aarch64. Probe the compiler and skip them. Upstream issue:
+    # https://github.com/ggml-org/llama.cpp/issues/17403; a PR with this patch
+    # will follow, then fetch it from there.
     ./ggml-cpu-all-variants-probe-sme.patch
   ];
 
@@ -236,7 +237,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       rm $out/share/mesh-llm/runtimes/*.tar.gz*
 
       # A distinct id and the top rank: mesh-llm uses this bundle instead of
-      # downloading upstream's.
+      # downloading upstream's. The packaging script has no option for either;
+      # an upstream PR adding one will follow, then drop this edit.
       for m in $out/share/mesh-llm/runtimes/*/manifest.json; do
         jq '.runtime.id += "-nixpkgs" | .runtime.rank = 1000' "$m" > "$m.tmp"
         mv "$m.tmp" "$m"
