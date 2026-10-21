@@ -90,7 +90,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # Some tests start servers on 127.0.0.1.
   __darwinAllowLocalNetworking = true;
 
-  # For CLI tests that build an HTTPS client or run the QA harnesses in scripts/.
+  # curl and python3 run the QA harnesses in scripts/. The CLI tests build an
+  # HTTPS client for localhost, which fails without a CA bundle; fixed upstream
+  # by https://github.com/Mesh-LLM/mesh-llm/pull/2492, drop cacert with a
+  # release that has it.
   nativeCheckInputs = [
     cacert
     curl
@@ -167,7 +170,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
       client-ready =
         runCommand "mesh-llm-client-ready"
           {
-            # The client builds an HTTPS client at startup, which loads the CA bundle.
+            # The client builds an HTTPS client at startup, which fails without a
+            # CA bundle. Fixed upstream by
+            # https://github.com/Mesh-LLM/mesh-llm/pull/2492; drop cacert with a
+            # release that has it.
             nativeBuildInputs = [
               finalAttrs.finalPackage
               cacert
