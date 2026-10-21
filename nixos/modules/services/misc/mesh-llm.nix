@@ -122,6 +122,9 @@ in
         HOME = "/var/lib/mesh-llm";
       }
       // lib.optionalAttrs (!cfg.allowRuntimeDownloads) {
+        # The override of the runtime.native_runtime.download setting from
+        # https://github.com/Mesh-LLM/mesh-llm/pull/2496. Releases without it
+        # ignore the variable; switch to the setting once the package has it.
         MESH_LLM_NO_RUNTIME_DOWNLOAD = "1";
       };
 
