@@ -180,6 +180,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
             ];
             # The client binds its mesh and console ports on localhost.
             __darwinAllowLocalNetworking = true;
+            # Its HTTP client reads the system proxy settings from configd.
+            sandboxProfile = ''
+              (allow mach-lookup (global-name "com.apple.SystemConfiguration.configd"))
+            '';
           }
           ''
             export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
