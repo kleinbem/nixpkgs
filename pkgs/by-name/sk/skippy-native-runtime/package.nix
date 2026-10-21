@@ -87,6 +87,14 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     hash = release.llamaCppHash;
   };
 
+  patches = [
+    # GGML_CPU_ALL_VARIANTS adds two armv9.2 variants built with +sme, which the
+    # CUDA 12 host compiler (GCC 13) rejects, failing the whole CUDA build on
+    # aarch64. Probe the compiler and skip them. Upstream: ggml-org/llama.cpp#17403;
+    # a PR with this change is in preparation.
+    ./ggml-cpu-all-variants-probe-sme.patch
+  ];
+
   outputs = [
     "out"
     "dev"
