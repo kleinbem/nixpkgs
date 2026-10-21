@@ -230,17 +230,19 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       ''}
       # The script runs upstream's automation (manifest, versions, runtime deps).
       export MESH_LLM_AUTOMATION_BIN=${lib.getExe finalAttrs.passthru.automation}
+      # The top rank: mesh-llm prefers this bundle over upstream's downloads.
+      export MESH_LLM_NATIVE_RUNTIME_RANK=1000
       mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
       LLAMA_STAGE_BUILD_DIR=$PWD/core \
         bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
           --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes
       rm $out/share/mesh-llm/runtimes/*.tar.gz*
 
-      # A distinct id and the top rank: mesh-llm uses this bundle instead of
-      # downloading upstream's. The packaging script has no option for either;
-      # an upstream PR adding one will follow, then drop this edit.
+      # A distinct id, so `mesh-llm runtime list` tells this bundle from upstream's
+      # runtime of the same backend. The script gets an --id-suffix option in
+      # https://github.com/Mesh-LLM/mesh-llm/pull/2526; use it and drop this edit.
       for m in $out/share/mesh-llm/runtimes/*/manifest.json; do
-        jq '.runtime.id += "-nixpkgs" | .runtime.rank = 1000' "$m" > "$m.tmp"
+        jq '.runtime.id += "-nixpkgs"' "$m" > "$m.tmp"
         mv "$m.tmp" "$m"
       done
     }
