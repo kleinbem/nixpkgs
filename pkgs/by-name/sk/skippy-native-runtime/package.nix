@@ -159,11 +159,6 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     git "''${gitArgs[@]}" am -q --3way --no-gpg-sign "''${queue[@]}"
     rm -rf .git
 
-    # clef.cpp misses <algorithm> since the v0.7.0 llama.cpp pin, and fails with
-    # GCC 14 or newer: https://github.com/Mesh-LLM/mesh-llm/issues/2495
-    # Applied after the queue, whose generated shards expect the file unchanged.
-    patch -p1 < ${./clef-include-algorithm.patch}
-
     # llama.cpp reports the commit it was built from; the tarball doesn't carry it.
     appendToVar cmakeFlags "-DLLAMA_BUILD_COMMIT=$(head -c 7 $llamaDir/upstream.txt)"
   '';
