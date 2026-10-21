@@ -178,10 +178,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
               finalAttrs.finalPackage
               cacert
             ];
-            # In the macOS build sandbox mesh-llm crashes at startup; without the
-            # sandbox the check passes there too. Not diagnosed yet; an upstream
-            # issue or PR will follow, then run the check on macOS as well.
-            meta.platforms = lib.platforms.linux;
+            # The client binds its mesh and console ports on localhost.
+            __darwinAllowLocalNetworking = true;
           }
           ''
             export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
