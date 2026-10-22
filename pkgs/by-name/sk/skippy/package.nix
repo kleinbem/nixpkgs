@@ -26,6 +26,8 @@ let
     runtimePrograms
     ;
 in
+# nixpkgs-update: no auto update
+# mesh-llm's update script updates the release.
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "skippy";
 
