@@ -70,7 +70,11 @@ in
       description = ''
         Whether MeshLLM may download prebuilt native runtimes at startup when
         none of the package's runtimes fits the host. Off, it uses only the
-        runtimes built by Nix and never asks GitHub for its runtime catalog.
+        runtimes built by Nix and doesn't fetch its runtime catalog from GitHub.
+
+        Releases without the `runtime.native_runtime.download` setting ignore
+        this: they fetch the catalog at every start and may download a runtime
+        when none of the package's runtimes fits.
       '';
     };
 
