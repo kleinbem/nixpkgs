@@ -180,6 +180,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
             ];
             # The client binds its mesh and console ports on localhost.
             __darwinAllowLocalNetworking = true;
+            # On Darwin, iroh's interface detection reaches CoreFoundation APIs that
+            # read ICU data from the system and segfault without it, as for dumbpipe.
+            sandboxProfile = ''
+              (allow file-read* (subpath "/usr/share/icu"))
+            '';
           }
           ''
             export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
