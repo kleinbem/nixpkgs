@@ -154,7 +154,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
-  # PREP: an unstable version reports only its release; drop with the next release.
+  # An unstable version reports only its release.
   preVersionCheck = "version=${lib.head (lib.splitString "-" finalAttrs.version)}";
 
   passthru = {

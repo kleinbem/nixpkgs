@@ -30,7 +30,7 @@
 
   # The MeshLLM release; buzz-desktop overrides it with the one it embeds.
   release ? {
-    # PREP: upstream main until the next release; then version = "<x.y.z>" and drop rev.
+    # Upstream main until the next release (0.79), then its tag without rev.
     # main reports 0.78.0: v0.78.1 was tagged on a release branch.
     version = "0.78.0-unstable-2026-10-23";
     rev = "b93c9b068ce8a19d1eb2a641d8a912770ae2b884";
