@@ -8,7 +8,6 @@
   ninja,
   pkg-config,
   gitMinimal,
-  jq,
   patchelf,
   python3,
   shaderc,
@@ -33,14 +32,14 @@
   release ? {
     # PREP: upstream main until the next release; then version = "<x.y.z>" and drop rev.
     # main reports 0.78.0: v0.78.1 was tagged on a release branch.
-    version = "0.78.0-unstable-2026-10-18";
-    rev = "e8792a859e26eaed210ac846a1bfb9c8aee19a42";
-    hash = "sha256-l4iRwIdK9W1k+VOkwHCFErCCAa0R0UM2MPHX4o7ufjA=";
+    version = "0.78.0-unstable-2026-10-23";
+    rev = "b93c9b068ce8a19d1eb2a641d8a912770ae2b884";
+    hash = "sha256-CvI9Fmt27s/hLK4yKoaauvbeS5Kjryh6ZI0VCf66/wY=";
     # The bNNNNN tag of the llama.cpp commit this release pins.
-    llamaCppHash = "sha256-fq8kOKa03uPtoXe5Oi1I3vA5MxJw1J7BFzKXusC4ojc=";
-    llamaCppBuild = "11165";
+    llamaCppHash = "sha256-pEDYgI3AMTU+cekvRX7NNt5wddznydQSNuerswvEpsA=";
+    llamaCppBuild = "11669";
     # Cargo vendor hash of the release's lockfile (mesh-llm and the automation tool).
-    cargoHash = "sha256-3mhx58RKVOpHWdCcWWgQnPadEMvb3tTbQSO3GbN/fu4=";
+    cargoHash = "sha256-x878IeNLMu1NPgPUKaVYywrPnUlyG/3Ec1F2Xbiq2Tc=";
   },
 }:
 
@@ -114,7 +113,6 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     cmake
     gitMinimal
-    jq
     ninja
     patchelf
     pkg-config
@@ -245,16 +243,9 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       mkdir core && cp -P $out/lib/lib*${effectiveStdenv.hostPlatform.extensions.sharedLibrary}* core/
       LLAMA_STAGE_BUILD_DIR=$PWD/core \
         bash mesh-llm/skippy/scripts/package-native-runtime.sh --backend ${backend} \
-          --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes
+          --keep-runpath --no-model-package-tool --out $out/share/mesh-llm/runtimes \
+          --id-suffix nixpkgs
       rm $out/share/mesh-llm/runtimes/*.tar.gz*
-
-      # A distinct id, so `mesh-llm runtime list` tells this bundle from upstream's
-      # runtime of the same backend. The script gets an --id-suffix option in
-      # https://github.com/Mesh-LLM/mesh-llm/pull/2526; use it and drop this edit.
-      for m in $out/share/mesh-llm/runtimes/*/manifest.json; do
-        jq '.runtime.id += "-nixpkgs"' "$m" > "$m.tmp"
-        mv "$m.tmp" "$m"
-      done
     }
     postFixupHooks+=(packageNativeRuntime)
   '';
