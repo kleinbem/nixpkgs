@@ -115,6 +115,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ''
         # Serves a model with the bundled runtime, offline.
         export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache
+        # Metal can't create a command queue in the darwin sandbox; run on the
+        # CPU, as llama-cpp's tests do.
+        export GGML_METAL_DEVICES=0
         skippy serve --model "$model" --bind-addr 127.0.0.1:19337 > serve.log 2>&1 &
         pid=$!
         for _ in $(seq 240); do
