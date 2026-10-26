@@ -65,7 +65,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--package"
     "mesh-llm"
   ];
-  cargoTestFlags = finalAttrs.cargoBuildFlags;
+  # EXPERIMENT: every workspace crate except the automation tool, all failures in one pass.
+  cargoTestFlags = [
+    "--workspace"
+    "--exclude"
+    "xtask"
+    "--no-fail-fast"
+  ];
 
   # The web console, embedded into the binary by the default web-ui feature.
   pnpmRoot = "mesh/crates/mesh-llm-ui";
