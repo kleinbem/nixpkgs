@@ -109,6 +109,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   preCheck = ''
     patchShebangs scripts
+    # EXPERIMENT: the workspace tests that call into the native runtime load the
+    # bundle this names (skippy-runtime's test_support), and skippy-quantize's
+    # tests read the pinned llama.cpp's quantize table from .deps/llama.cpp.
+    export MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR=$(echo ${skippy-native-runtime}/share/mesh-llm/runtimes/*)
+    mkdir -p .deps
+    ln -s ${skippy-native-runtime.src} .deps/llama.cpp
   '';
 
   postPatch = ''
