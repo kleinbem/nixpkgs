@@ -65,7 +65,60 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--package"
     "mesh-llm"
   ];
-  cargoTestFlags = finalAttrs.cargoBuildFlags;
+  # The tests of every crate, not only mesh-llm's.
+  cargoTestFlags = [
+    "--workspace"
+    # The release automation tool.
+    "--exclude"
+    "xtask"
+    # Its tests reach the runtime without loading it in a build with the
+    # dynamic runtime. Fixed upstream by
+    # https://github.com/Mesh-LLM/mesh-llm/pull/2629; include it again with a
+    # release that has it.
+    "--exclude"
+    "skippy-package-builder"
+  ];
+  checkFlags = map (test: "--skip=${test}") [
+    # The progress gauges assume a terminal width the build doesn't have.
+    # Fixed upstream by https://github.com/Mesh-LLM/mesh-llm/pull/2605.
+    "inline_gauge_keeps_bar_visible_for_long_labels"
+    "inline_gauge_renders_styled_progress_label_and_bar"
+    # Need the runtime loaded; fixed upstream by
+    # https://github.com/Mesh-LLM/mesh-llm/pull/2629.
+    "hardware::tests::test_skippy_backend_empty_result_uses_cpu_only_budget_without_legacy_fallback"
+    "hardware::tests::test_skippy_backend_error_uses_cpu_only_budget_without_legacy_fallback"
+    # Runtime discovery tests that find the bundle preCheck points to:
+    # https://github.com/Mesh-LLM/mesh-llm/issues/2630.
+    "discovery::tests::local_runtime_listing_prefers_bundle_and_includes_distinct_cache_entries"
+    "discovery::tests::local_runtime_listing_skips_malformed_bundle_and_cache_candidates"
+    "tests::adjacent_windows_cpu_bundle_does_not_hide_a_remote_cuda_candidate"
+    "tests::a_runtime_reached_through_two_bundle_directories_is_counted_as_a_bundle_duplicate"
+    "tests::a_runtime_that_is_both_bundled_and_published_is_listed_once_and_served_from_the_bundle"
+    "tests::bundle_artifacts_are_merged_with_the_release_manifest"
+    "tests::bundle_only_load_takes_release_identity_from_the_bundle"
+    "tests::default_manifest_url_is_skipped_when_not_allowed"
+    "tests::default_manifest_url_is_still_consulted_when_bundle_dirs_exist"
+    "tests::env_manifest_url_wins_over_default"
+    "tests::explicit_gpu_selection_failure_names_the_catalogs_and_the_rejected_candidates"
+    "tests::explicit_manifest_url_wins_over_env_and_default"
+    "tests::installer_loads_published_v078_catalog_without_a_bundle"
+    "tests::load_release_manifest_prefers_explicit_path_over_env_and_default"
+    "tests::non_default_release_version_request_uses_versioned_release_url"
+    "tests::recommended_selection_sets_aside_other_platforms_instead_of_listing_them"
+    "tests::remote_fetch_failure_falls_back_to_bundles"
+    "tests::remote_fetch_failure_without_bundles_is_an_error"
+    "current_install_rejects_stale_catalog_instead_of_returning_cached_runtime"
+    "current_install_uses_matching_bundle_despite_stale_catalog_and_cache"
+    "runtime_native::tests::available_runtime_bundle_dirs_expand_a_product_root"
+    "runtime_native::tests::doctor_discovery_includes_a_bundle_when_the_cache_is_empty"
+    "system::native_runtime::dynamic::tests::cache_hit_skips_install_and_loads_cached_runtime_once"
+    "system::native_runtime::dynamic::tests::cache_miss_installs_once_and_loads_post_install_runtime"
+    "system::native_runtime::dynamic::tests::startup_local_discovery_keeps_cached_fallback_after_legacy_bundle"
+    "system::native_runtime::dynamic::tests::vulkan_flavor_loads_vulkan_runtime_over_higher_ranked_cuda"
+    # Timing assertions that fail on a busy builder.
+    "lock_cost::concurrent_commit_calls_stay_within_the_ingress_budget"
+    "stage_control_shutdown_cancels_and_joins_an_active_readiness_probe"
+  ];
 
   # The web console, embedded into the binary by the default web-ui feature.
   pnpmRoot = "mesh/crates/mesh-llm-ui";
@@ -103,6 +156,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   preCheck = ''
     patchShebangs scripts
+    # The tests that load the runtime find it here, and skippy-quantize's tests
+    # read the quantization table of the pinned llama.cpp from .deps/llama.cpp.
+    export MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR=${skippy-native-runtime}/share/mesh-llm/runtimes
+    mkdir -p .deps
+    ln -s ${skippy-native-runtime.src} .deps/llama.cpp
   '';
 
   postPatch = ''
