@@ -159,6 +159,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   preCheck = ''
     patchShebangs scripts
+    # Without debug info: the workspace's test binaries are large, and linking
+    # several of them in parallel with it exhausts the builder's memory.
+    export CARGO_PROFILE_DEV_DEBUG=0
     # The tests that load the runtime find it here, and skippy-quantize's tests
     # read the quantization table of the pinned llama.cpp from .deps/llama.cpp.
     export MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR=${skippy-native-runtime}/share/mesh-llm/runtimes
