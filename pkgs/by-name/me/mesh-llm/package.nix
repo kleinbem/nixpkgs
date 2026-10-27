@@ -65,7 +65,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--package"
     "mesh-llm"
   ];
-  # The tests of every crate, not only mesh-llm's.
+  # The tests of every crate, not only mesh-llm's, in the dev profile as
+  # upstream's CI runs them: the release profile links every test binary with
+  # LTO and one codegen unit, which needs more memory than a builder may have.
+  checkType = "debug";
   cargoTestFlags = [
     "--workspace"
     # The release automation tool.
