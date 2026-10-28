@@ -16,6 +16,7 @@
   fetchurl,
   jq,
   versionCheckHook,
+  fetchpatch2,
   skippy-native-runtime,
   rocmPackages,
   nixosTests,
@@ -61,6 +62,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # The runtime is built from the same MeshLLM release.
   inherit (skippy-native-runtime) version;
   src = skippy-native-runtime.meshLlmSrc;
+  patches = [
+    (fetchpatch2 {
+      name = "macos-cpu-budget.patch";
+      url = "https://github.com/kleinbem/mesh-llm/commit/0b646fd509a6f113263f50c79ac7eba8067c774d.patch";
+      hash = "sha256-gUz/Tp7GC4asfQ1mZPiJMoMpKUkp3ByQdwOQAsfHE9o=";
+    })
+  ];
 
   inherit (skippy-native-runtime) cargoHash;
   cargoBuildFlags = [
