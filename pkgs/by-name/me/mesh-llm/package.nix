@@ -13,6 +13,8 @@
   pkg-config,
   python3,
   curl,
+  fetchurl,
+  jq,
   versionCheckHook,
   skippy-native-runtime,
   rocmPackages,
@@ -71,7 +73,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   checkType = "debug";
   cargoTestFlags = [
     "--workspace"
-    # The release automation tool.
+    # The release automation tool: its tests need git, curl, Swift and network
+    # (see skippy-native-runtime's passthru.automation).
     "--exclude"
     "xtask"
     # Its tests reach the runtime without loading it in a build with the
@@ -268,6 +271,49 @@ rustPlatform.buildRustPackage (finalAttrs: {
             kill -INT $pid
             timeout 30 tail --pid=$pid -f /dev/null || { echo "client did not stop after SIGINT" >&2; exit 1; }
             wait $pid
+            touch $out
+          '';
+      # Serves a model with the bundled runtimes, offline, and completes a prompt
+      # (the NixOS test does this on x86_64 Linux only).
+      serve =
+        runCommand "mesh-llm-serve"
+          {
+            nativeBuildInputs = [
+              finalAttrs.finalPackage
+              curl
+              jq
+            ];
+            # The 1 MB model of the NixOS test.
+            model = fetchurl {
+              url = "https://huggingface.co/ggml-org/models-moved/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories260K.gguf";
+              hash = "sha256-Jwy6G9UQn0LQM1D2BAYCRWBGTbFzwOOH2R8EJtO9JW0=";
+            };
+            __darwinAllowLocalNetworking = true;
+            sandboxProfile = ''
+              (allow file-read* (subpath "/usr/share/icu"))
+            '';
+          }
+          ''
+            export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
+            export XDG_STATE_HOME=$TMPDIR/state MESH_LLM_RUNTIME_ROOT=$TMPDIR/runtime
+            # Metal can't create a command queue in the darwin sandbox; run on the
+            # CPU, as llama-cpp's tests do.
+            export GGML_METAL_DEVICES=0
+            mkdir -p $HOME/.mesh-llm
+            printf 'version = 1\n\n[[models]]\nmodel = "%s"\n' "$model" > $HOME/.mesh-llm/config.toml
+            mesh-llm serve --log-format json --port 19337 --console 13131 --bind-port 17842 > serve.jsonl 2>&1 &
+            pid=$!
+            for _ in $(seq 360); do
+              curl -fsS http://127.0.0.1:19337/v1/models 2>/dev/null | grep -q '"id"' && break
+              kill -0 $pid || { cat serve.jsonl; echo "mesh-llm exited before serving" >&2; exit 1; }
+              sleep 0.5
+            done
+            id=$(curl -fsS http://127.0.0.1:19337/v1/models | jq -r '.data[0].id')
+            curl -fsS http://127.0.0.1:19337/v1/completions -H 'Content-Type: application/json' \
+              -d "{\"model\": \"$id\", \"prompt\": \"Once upon a time\", \"max_tokens\": 8}" \
+              | jq -e '.choices[0].text | length > 0'
+            kill -INT $pid
+            timeout 30 tail --pid=$pid -f /dev/null || { echo "mesh-llm did not stop after SIGINT" >&2; exit 1; }
             touch $out
           '';
     }

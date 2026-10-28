@@ -197,6 +197,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     (cmakeFeature "CMAKE_HIP_COMPILER" "${rocmPackages.clr.hipClangPath}/clang++")
     (cmakeFeature "CMAKE_HIP_ARCHITECTURES" (lib.concatStringsSep ";" rocmGpuTargets))
   ]
+  # The same Metal flags as nixpkgs' llama-cpp.
   ++ optionals metalSupport [
     (cmakeFeature "CMAKE_C_FLAGS" "-D__ARM_FEATURE_DOTPROD=1")
     (cmakeBool "GGML_METAL_EMBED_LIBRARY" true)
@@ -206,7 +207,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   # last, after the postFixupHooks that patch runpaths, because mesh-llm checksums
   # every bundled file. --keep-runpath keeps the store paths after $ORIGIN;
   # --no-model-package-tool skips skippy-package-builder, an offline publishing tool
-  # mesh-llm doesn't call.
+  # mesh-llm doesn't call. The script also writes a release archive of the bundle,
+  # which the package doesn't need: it installs the unpacked bundle.
   preFixup = ''
     packageNativeRuntime() {
       cp -r ${finalAttrs.passthru.meshLlmSrc} mesh-llm && chmod -R u+w mesh-llm
@@ -264,7 +266,10 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     };
     # Environment for the programs that load this bundle (mesh-llm, buzz-desktop).
     hostEnvironment = lib.optionalAttrs cudaSupport {
-      # mesh-llm wants a detected CUDA toolkit; the bundle finds CUDA via its runpath.
+      # mesh-llm accepts a CUDA bundle only when it detects a CUDA toolkit on the
+      # host (ldconfig, LD_LIBRARY_PATH, /usr/local/cuda); this bundle finds CUDA
+      # through its runpath instead. The variable is upstream's documented
+      # override (skippy/crates/skippy-native-runtime/README.md).
       MESH_LLM_CUDA_TOOLKIT_MAJOR = cudaPackages.cudaMajorVersion;
     };
     meshLlmSrc = fetchFromGitHub {
