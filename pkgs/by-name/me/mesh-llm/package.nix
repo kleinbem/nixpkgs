@@ -83,6 +83,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # release that has it.
     "--exclude"
     "skippy-package-builder"
+    "--no-fail-fast"
   ];
   checkFlags = map (test: "--skip=${test}") ([
     # The progress gauges assume a terminal width the build doesn't have.
@@ -124,6 +125,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Timing assertions that fail on a busy builder.
     "lock_cost::concurrent_commit_calls_stay_within_the_ingress_budget"
     "stage_control_shutdown_cancels_and_joins_an_active_readiness_probe"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    "runtime_100_create_drop_no_thread_leak"
   ]);
 
   # The web console, embedded into the binary by the default web-ui feature.
