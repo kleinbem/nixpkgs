@@ -83,7 +83,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # release that has it.
     "--exclude"
     "skippy-package-builder"
-    "--no-fail-fast"
   ];
   checkFlags = map (test: "--skip=${test}") (
     [
@@ -128,12 +127,19 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "stage_control_shutdown_cancels_and_joins_an_active_readiness_probe"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      # Counts the machine's threads with sysctl, which isn't on PATH in the
+      # sandbox: https://github.com/Mesh-LLM/mesh-llm/pull/XXXX.
       "runtime_100_create_drop_no_thread_leak"
+      # Read process names and start times with ps, which isn't on PATH in the
+      # sandbox: https://github.com/Mesh-LLM/mesh-llm/pull/XXXX.
       "process::pid_identity_tests::"
       "runtime::instance::scan_tests::scan_skips_dead_owners"
       "runtime::instance::tests::validate_"
+      # Find the bundle preCheck points to, as the runtime discovery tests above.
       "system::native_runtime::dynamic::tests::startup_bundle_with_newer_glibc_does_not_block_compatible_cache"
       "system::native_runtime::dynamic::tests::startup_does_not_pass_legacy_linux_bundle_to_installer"
+      # Deadlines of a few tens of milliseconds that a busy builder misses:
+      # https://github.com/Mesh-LLM/mesh-llm/issues/XXXX.
       "plugin_dispatch::tests::blocking_commit_cannot_extend_the_proposal_deadline"
       "plugin_dispatch::tests::slow_commit_abstains_before_plugin_dispatch_and_later_positions_recover"
       "plugin_dispatch::tests::slow_passive_discard_cannot_run_the_next_proposal_after_its_deadline"
@@ -287,8 +293,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
             wait $pid
             touch $out
           '';
+    }
+    // lib.optionalAttrs stdenv.hostPlatform.isLinux {
       # Serves a model with the bundled runtimes, offline, and completes a prompt
-      # (the NixOS test does this on x86_64 Linux only).
+      # (the NixOS test does this on x86_64 Linux only). Linux only: Metal can't
+      # run in the darwin sandbox, and without it mesh-llm on macOS budgets no
+      # memory for a CPU-only model (https://github.com/Mesh-LLM/mesh-llm/issues/XXXX).
       serve =
         runCommand "mesh-llm-serve"
           {
@@ -302,17 +312,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
               url = "https://huggingface.co/ggml-org/models-moved/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories260K.gguf";
               hash = "sha256-Jwy6G9UQn0LQM1D2BAYCRWBGTbFzwOOH2R8EJtO9JW0=";
             };
-            __darwinAllowLocalNetworking = true;
-            sandboxProfile = ''
-              (allow file-read* (subpath "/usr/share/icu"))
-            '';
           }
           ''
             export HOME=$TMPDIR/home XDG_CACHE_HOME=$TMPDIR/cache XDG_CONFIG_HOME=$TMPDIR/config
             export XDG_STATE_HOME=$TMPDIR/state MESH_LLM_RUNTIME_ROOT=$TMPDIR/runtime
-            # Metal can't create a command queue in the darwin sandbox; run on the
-            # CPU, as llama-cpp's tests do.
-            export GGML_METAL_DEVICES=0
             mkdir -p $HOME/.mesh-llm
             printf 'version = 1\n\n[[models]]\nmodel = "%s"\n' "$model" > $HOME/.mesh-llm/config.toml
             mesh-llm serve --log-format json --port 19337 --console 13131 --bind-port 17842 > serve.jsonl 2>&1 &
@@ -327,15 +330,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
             id=$(curl -fsS http://127.0.0.1:19337/v1/models | jq -r '.data[0].id')
             curl -fsS http://127.0.0.1:19337/v1/completions -H 'Content-Type: application/json' \
               -d "{\"model\": \"$id\", \"prompt\": \"Once upon a time\", \"max_tokens\": 8}" \
-              | tee completion.json | jq -e '.choices[0].text | length > 0'
+              | jq -e '.choices[0].text | length > 0'
             kill -INT $pid
             timeout 30 tail --pid=$pid -f /dev/null || { echo "mesh-llm did not stop after SIGINT" >&2; exit 1; }
             touch $out
           '';
-    }
-    # The GPU runtimes build without a GPU; building them catches packaging breakage
-    # in backends that can't run here. One ROCm target is enough for that.
-    // lib.optionalAttrs stdenv.hostPlatform.isLinux {
+      # The GPU runtimes build without a GPU; building them catches packaging breakage
+      # in backends that can't run here. One ROCm target is enough for that.
       runtime-rocm = runtime {
         rocmSupport = true;
         rocmGpuTargets = [ "gfx1100" ];
