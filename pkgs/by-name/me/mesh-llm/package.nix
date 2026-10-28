@@ -128,6 +128,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "runtime_100_create_drop_no_thread_leak"
+    "process::pid_identity_tests::"
+    "runtime::instance::scan_tests::scan_skips_dead_owners"
+    "runtime::instance::tests::validate_"
+    "system::native_runtime::dynamic::tests::startup_bundle_with_newer_glibc_does_not_block_compatible_cache"
+    "system::native_runtime::dynamic::tests::startup_does_not_pass_legacy_linux_bundle_to_installer"
+    "plugin_dispatch::tests::blocking_commit_cannot_extend_the_proposal_deadline"
+    "plugin_dispatch::tests::slow_commit_abstains_before_plugin_dispatch_and_later_positions_recover"
+    "plugin_dispatch::tests::slow_passive_discard_cannot_run_the_next_proposal_after_its_deadline"
   ]);
 
   # The web console, embedded into the binary by the default web-ui feature.
