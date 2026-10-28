@@ -167,6 +167,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     export MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR=${skippy-native-runtime}/share/mesh-llm/runtimes
     mkdir -p .deps
     ln -s ${skippy-native-runtime.src} .deps/llama.cpp
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # Metal can't create a command queue in the darwin sandbox, and the client
+    # tests start a node that loads the runtime; run on the CPU, as skippy's
+    # serve test does.
+    export GGML_METAL_DEVICES=0
   '';
 
   postPatch = ''
