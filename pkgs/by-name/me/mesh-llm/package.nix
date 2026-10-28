@@ -80,11 +80,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # release that has it.
     "--exclude"
     "skippy-package-builder"
-  ]
-  # Library tests only on darwin, as upstream's macOS CI runs them: the
-  # integration tests that start nodes (mesh-client's control-plane tests)
-  # crash in the darwin build sandbox (SIGSEGV).
-  ++ lib.optionals stdenv.hostPlatform.isDarwin [ "--lib" ];
+  ];
   checkFlags = map (test: "--skip=${test}") ([
     # The progress gauges assume a terminal width the build doesn't have.
     # Fixed upstream by https://github.com/Mesh-LLM/mesh-llm/pull/2605.
@@ -149,6 +145,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   # Some tests start servers on 127.0.0.1.
   __darwinAllowLocalNetworking = true;
+  # On Darwin, iroh's interface detection reaches CoreFoundation APIs that read
+  # ICU data from the system and segfault without it (as for client-ready
+  # below, and dumbpipe); the tests start iroh endpoints.
+  sandboxProfile = ''
+    (allow file-read* (subpath "/usr/share/icu"))
+  '';
 
   # curl and python3 run the QA harnesses in scripts/. The scan_refresh tests in
   # owned_node_commands_cli build an HTTPS client for the local API, which fails
