@@ -195,6 +195,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # The telemetry tests build a reqwest client, which needs CA certificates even for the local
   # test gateway.
   nativeCheckInputs = [ cacert ];
+  # The berdctl server tests listen on 127.0.0.1.
+  __darwinAllowLocalNetworking = true;
 
   # The Rust test lanes of upstream's `just tauri-test`, which its CI runs on ubuntu-latest in
   # the dev profile, with the sidecars and resources left out of the Tauri config like there.
