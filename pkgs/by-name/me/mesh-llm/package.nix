@@ -77,23 +77,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (see skippy-native-runtime's passthru.automation).
     "--exclude"
     "xtask"
-    # Its tests reach the runtime without loading it in a build with the
-    # dynamic runtime. Fixed upstream by
-    # https://github.com/Mesh-LLM/mesh-llm/pull/2629; include it again with a
-    # release that has it.
-    "--exclude"
-    "skippy-package-builder"
   ];
   checkFlags = map (test: "--skip=${test}") (
     [
-      # The progress gauges assume a terminal width the build doesn't have.
-      # Fixed upstream by https://github.com/Mesh-LLM/mesh-llm/pull/2605.
-      "inline_gauge_keeps_bar_visible_for_long_labels"
-      "inline_gauge_renders_styled_progress_label_and_bar"
-      # Need the runtime loaded; fixed upstream by
-      # https://github.com/Mesh-LLM/mesh-llm/pull/2629.
-      "hardware::tests::test_skippy_backend_empty_result_uses_cpu_only_budget_without_legacy_fallback"
-      "hardware::tests::test_skippy_backend_error_uses_cpu_only_budget_without_legacy_fallback"
       # Runtime discovery tests that find the bundle preCheck points to:
       # https://github.com/Mesh-LLM/mesh-llm/issues/2630.
       "discovery::tests::local_runtime_listing_prefers_bundle_and_includes_distinct_cache_entries"
@@ -122,8 +108,15 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "system::native_runtime::dynamic::tests::cache_miss_installs_once_and_loads_post_install_runtime"
       "system::native_runtime::dynamic::tests::startup_local_discovery_keeps_cached_fallback_after_legacy_bundle"
       "system::native_runtime::dynamic::tests::vulkan_flavor_loads_vulkan_runtime_over_higher_ranked_cuda"
-      # Timing assertions that fail on a busy builder.
-      "lock_cost::concurrent_commit_calls_stay_within_the_ingress_budget"
+      # Runs /usr/bin/true as its artifact hook, which isn't in the sandbox:
+      # https://github.com/Mesh-LLM/mesh-llm/pull/2699.
+      "package_v2::tests::successful_artifact_hook_may_leave_verified_copies_for_rechecking"
+      # Runs the skippy-package-builder binary, which doesn't load the runtime in
+      # a build with the dynamic runtime (noted on
+      # https://github.com/Mesh-LLM/mesh-llm/pull/2629).
+      "inspect_local_gguf_does_not_prepare_download_caches"
+      # Gives shutdown 3 s, which a busy builder can miss:
+      # https://github.com/Mesh-LLM/mesh-llm/issues/2700.
       "stage_control_shutdown_cancels_and_joins_an_active_readiness_probe"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
