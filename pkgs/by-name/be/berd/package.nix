@@ -5,6 +5,7 @@
   fetchFromGitHub,
   fetchPnpmDeps,
   runCommand,
+  callPackage,
   cargo-tauri,
   cmake,
   pkg-config,
@@ -223,6 +224,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   '';
 
   passthru = {
+    tests.voice = callPackage ./voice-test.nix { berd = finalAttrs.finalPackage; };
     tests.sidecars = runCommand "berd-sidecars-test" { } ''
       # goose writes its logs under HOME even for --help.
       export HOME=$(mktemp -d)
