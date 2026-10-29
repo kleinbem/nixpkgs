@@ -25,6 +25,10 @@
   sherpa-onnx,
   goose-cli,
   cacert,
+  swift,
+  swiftpm,
+  xcbuild,
+  writableTmpDirAsHomeHook,
   nix-update-script,
 }:
 
@@ -88,8 +92,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # upstream's README), so Goose stays maintained in one place.
     mkdir -p src-tauri/binaries
     ln -s ${lib.getExe goose-cli} src-tauri/binaries/goosed-${rustTarget}
+  ''
+  + lib.optionalString stdenv.hostPlatform.isLinux ''
     # Catch (block/catch) is macOS-only; upstream's script stages its own stub on other platforms.
     bash scripts/prepare-catch-sidecar.sh ${rustTarget}
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # Upstream's release downloads a prebuilt Catch; without it the global-shortcut experiment
+    # is unavailable, like on Linux.
+    printf '#!/bin/sh\necho "catch: not available in this build" >&2\nexit 1\n' \
+      > src-tauri/binaries/catch-${rustTarget}
+    chmod +x src-tauri/binaries/catch-${rustTarget}
   '';
 
   nativeBuildInputs = [
@@ -99,23 +112,34 @@ rustPlatform.buildRustPackage (finalAttrs: {
     nodejs_24
     pnpm
     pnpmConfigHook
-    wrapGAppsHook3
     makeBinaryWrapper
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook3 ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # build.rs compiles the AirPods bridge (a SwiftPM package) through swift-rs.
+    swift
+    swiftpm
+    xcbuild
+    writableTmpDirAsHomeHook
   ];
 
   buildInputs = [
-    alsa-lib
     # patchShebangs needs sh in the host inputs for the Catch stub (strictDeps)
     bashNonInteractive
-    gtk3
-    libsoup_3
-    webkitgtk_4_1
-    glib-networking
     # shared sherpa-onnx links against onnxruntime
     onnxruntime
     sherpa-onnx
   ]
-  ++ gstreamerPlugins;
+  ++ lib.optionals stdenv.hostPlatform.isLinux (
+    [
+      alsa-lib
+      gtk3
+      libsoup_3
+      webkitgtk_4_1
+      glib-networking
+    ]
+    ++ gstreamerPlugins
+  );
 
   env = {
     SHERPA_ONNX_LIB_DIR = "${lib.getLib sherpa-onnx}/lib";
@@ -191,7 +215,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     runHook postCheck
   '';
 
-  postInstall = ''
+  postInstall = lib.optionalString stdenv.hostPlatform.isLinux ''
     # The app finds its sidecars next to its own executable and its resources (distro/,
     # runtime-config.json, sounds) at ../lib/Berd relative to the executable's directory;
     # without that directory Tauri falls back to /usr/lib/Berd. Keep all of it together under
@@ -216,11 +240,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     )
   '';
 
-  postFixup = ''
-    makeWrapper $out/libexec/berd/bin/Berd $out/bin/berd "''${gappsWrapperArgs[@]}"
-    # berdctl talks to a running Berd; agents started by Berd get it via BERDCTL_BIN.
-    ln -s ../libexec/berd/bin/berdctl $out/bin/berdctl
-  '';
+  postFixup =
+    lib.optionalString stdenv.hostPlatform.isLinux ''
+      makeWrapper $out/libexec/berd/bin/Berd $out/bin/berd "''${gappsWrapperArgs[@]}"
+      # berdctl talks to a running Berd; agents started by Berd get it via BERDCTL_BIN.
+      ln -s ../libexec/berd/bin/berdctl $out/bin/berdctl
+    ''
+    + lib.optionalString stdenv.hostPlatform.isDarwin ''
+      mkdir -p $out/bin
+      makeWrapper $out/Applications/Berd.app/Contents/MacOS/Berd $out/bin/berd
+      ln -s ../Applications/Berd.app/Contents/MacOS/berdctl $out/bin/berdctl
+    '';
 
   passthru = {
     tests.sidecars = runCommand "berd-sidecars-test" { } ''
@@ -252,7 +282,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     license = lib.licenses.asl20;
     mainProgram = "berd";
     maintainers = [ lib.maintainers.kleinbem ];
-    # Not tested on darwin yet (needs the Catch sidecar and the macOS bundle layout).
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 })
