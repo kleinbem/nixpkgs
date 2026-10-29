@@ -154,6 +154,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     VITE_UPDATER_ENABLED = "false";
     # As in upstream's release: telemetry stays off until the user opts in (TELEMETRY.md).
     VITE_ENVIRONMENT = "production";
+  }
+  // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+    # swift-rs asks this clang for its compiler-rt directory (default /usr/bin/clang).
+    SWIFT_RS_CLANG = "${stdenv.cc}/bin/clang";
   };
 
   # cmake is only used by dependency build scripts
