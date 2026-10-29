@@ -32,13 +32,13 @@
     # Upstream main until the next release (0.79), then its tag without rev.
     # main reports 0.78.0: v0.78.1 was tagged on a release branch.
     version = "0.78.0-unstable-2026-10-29";
-    rev = "f2a7f62c755e283c389a28cbf8d1e8f926677a4e";
-    hash = "sha256-ttTk6WoPNZjGNZWbxF/ijISLXZh8BxUM5b+dp8R0Q48=";
+    rev = "8309bc6ae1cbe2d6cd9230273ca2bbe460e9a34c";
+    hash = "sha256-UHoPkbEjNkPrmJ3x1hYJ6jkMVbasIJki0kMXHeVauz4=";
     # The bNNNNN tag of the llama.cpp commit this release pins.
     llamaCppHash = "sha256-pEDYgI3AMTU+cekvRX7NNt5wddznydQSNuerswvEpsA=";
     llamaCppBuild = "11669";
     # Cargo vendor hash of the release's lockfile (mesh-llm and the automation tool).
-    cargoHash = "sha256-MOHo5D3XBRbmGLFfImSthhAa2FHEfYBVtPJUyPi2mBs=";
+    cargoHash = "sha256-Ajxhrj9z7jZfE/PYS8JP5rgaWllIIhBvINeSrDvTNQU=";
   },
 }:
 
@@ -273,7 +273,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       MESH_LLM_CUDA_TOOLKIT_MAJOR = cudaPackages.cudaMajorVersion;
     };
     meshLlmSrc = fetchFromGitHub {
-      owner = "Mesh-LLM";
+      owner = "kleinbem";
       repo = "mesh-llm";
       ${if release ? rev then "rev" else "tag"} = release.rev or "v${finalAttrs.version}";
       inherit (release) hash;

@@ -78,66 +78,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--exclude"
     "xtask"
   ];
-  checkFlags = map (test: "--skip=${test}") (
-    [
-      # Runtime discovery tests that find the bundle preCheck points to:
-      # https://github.com/Mesh-LLM/mesh-llm/issues/2630.
-      "discovery::tests::local_runtime_listing_prefers_bundle_and_includes_distinct_cache_entries"
-      "discovery::tests::local_runtime_listing_skips_malformed_bundle_and_cache_candidates"
-      "tests::adjacent_windows_cpu_bundle_does_not_hide_a_remote_cuda_candidate"
-      "tests::a_runtime_reached_through_two_bundle_directories_is_counted_as_a_bundle_duplicate"
-      "tests::a_runtime_that_is_both_bundled_and_published_is_listed_once_and_served_from_the_bundle"
-      "tests::bundle_artifacts_are_merged_with_the_release_manifest"
-      "tests::bundle_only_load_takes_release_identity_from_the_bundle"
-      "tests::default_manifest_url_is_skipped_when_not_allowed"
-      "tests::default_manifest_url_is_still_consulted_when_bundle_dirs_exist"
-      "tests::env_manifest_url_wins_over_default"
-      "tests::explicit_gpu_selection_failure_names_the_catalogs_and_the_rejected_candidates"
-      "tests::explicit_manifest_url_wins_over_env_and_default"
-      "tests::installer_loads_published_v078_catalog_without_a_bundle"
-      "tests::load_release_manifest_prefers_explicit_path_over_env_and_default"
-      "tests::non_default_release_version_request_uses_versioned_release_url"
-      "tests::recommended_selection_sets_aside_other_platforms_instead_of_listing_them"
-      "tests::remote_fetch_failure_falls_back_to_bundles"
-      "tests::remote_fetch_failure_without_bundles_is_an_error"
-      "current_install_rejects_stale_catalog_instead_of_returning_cached_runtime"
-      "current_install_uses_matching_bundle_despite_stale_catalog_and_cache"
-      "runtime_native::tests::available_runtime_bundle_dirs_expand_a_product_root"
-      "runtime_native::tests::doctor_discovery_includes_a_bundle_when_the_cache_is_empty"
-      "system::native_runtime::dynamic::tests::cache_hit_skips_install_and_loads_cached_runtime_once"
-      "system::native_runtime::dynamic::tests::cache_miss_installs_once_and_loads_post_install_runtime"
-      "system::native_runtime::dynamic::tests::startup_local_discovery_keeps_cached_fallback_after_legacy_bundle"
-      "system::native_runtime::dynamic::tests::vulkan_flavor_loads_vulkan_runtime_over_higher_ranked_cuda"
-      # Runs /usr/bin/true as its artifact hook, which isn't in the sandbox:
-      # https://github.com/Mesh-LLM/mesh-llm/pull/2699.
-      "package_v2::tests::successful_artifact_hook_may_leave_verified_copies_for_rechecking"
-      # Runs the skippy-package-builder binary, which doesn't load the runtime in
-      # a build with the dynamic runtime (noted on
-      # https://github.com/Mesh-LLM/mesh-llm/pull/2629).
-      "inspect_local_gguf_does_not_prepare_download_caches"
-      # Gives shutdown 3 s, which a busy builder can miss:
-      # https://github.com/Mesh-LLM/mesh-llm/issues/2700.
-      "stage_control_shutdown_cancels_and_joins_an_active_readiness_probe"
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-      # Counts the machine's threads with sysctl, which isn't on PATH in the
-      # sandbox: https://github.com/Mesh-LLM/mesh-llm/pull/2672.
-      "runtime_100_create_drop_no_thread_leak"
-      # Read process names and start times with ps, which isn't on PATH in the
-      # sandbox: https://github.com/Mesh-LLM/mesh-llm/pull/2673.
-      "process::pid_identity_tests::"
-      "runtime::instance::scan_tests::scan_skips_dead_owners"
-      "runtime::instance::tests::validate_"
-      # Find the bundle preCheck points to, as the runtime discovery tests above.
-      "system::native_runtime::dynamic::tests::startup_bundle_with_newer_glibc_does_not_block_compatible_cache"
-      "system::native_runtime::dynamic::tests::startup_does_not_pass_legacy_linux_bundle_to_installer"
-      # Deadlines of a few tens of milliseconds that a busy builder misses:
-      # https://github.com/Mesh-LLM/mesh-llm/issues/2670.
-      "plugin_dispatch::tests::blocking_commit_cannot_extend_the_proposal_deadline"
-      "plugin_dispatch::tests::slow_commit_abstains_before_plugin_dispatch_and_later_positions_recover"
-      "plugin_dispatch::tests::slow_passive_discard_cannot_run_the_next_proposal_after_its_deadline"
-    ]
-  );
+  checkFlags = map (test: "--skip=${test}") [
+    # Runs the skippy-package-builder binary, which doesn't load the runtime in
+    # a build with the dynamic runtime (noted on
+    # https://github.com/Mesh-LLM/mesh-llm/pull/2629).
+    "inspect_local_gguf_does_not_prepare_download_caches"
+  ];
 
   # The web console, embedded into the binary by the default web-ui feature.
   pnpmRoot = "mesh/crates/mesh-llm-ui";
@@ -168,11 +114,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     (allow file-read* (subpath "/usr/share/icu"))
   '';
 
-  # curl and python3 run the QA harnesses in scripts/. The scan_refresh tests in
-  # owned_node_commands_cli build an HTTPS client for the local API, which fails
-  # without a CA bundle. Fixed upstream by
-  # https://github.com/Mesh-LLM/mesh-llm/pull/2577; drop cacert with a release
-  # that has it.
+  # curl and python3 run the QA harnesses in scripts/. The analytics tests post
+  # to a local server through an HTTP client that needs a CA bundle to build.
   nativeCheckInputs = [
     cacert
     curl
