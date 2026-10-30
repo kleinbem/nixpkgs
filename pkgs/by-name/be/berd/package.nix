@@ -24,7 +24,12 @@
   onnxruntime,
   sherpa-onnx,
   goose-cli,
+  block-catch,
   cacert,
+  swift,
+  swiftpm,
+  xcbuild,
+  writableTmpDirAsHomeHook,
   nix-update-script,
 }:
 
@@ -88,8 +93,21 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # upstream's README), so Goose stays maintained in one place.
     mkdir -p src-tauri/binaries
     ln -s ${lib.getExe goose-cli} src-tauri/binaries/goosed-${rustTarget}
+  ''
+  + lib.optionalString stdenv.hostPlatform.isLinux ''
     # Catch (block/catch) is macOS-only; upstream's script stages its own stub on other platforms.
     bash scripts/prepare-catch-sidecar.sh ${rustTarget}
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # Upstream's release downloads a prebuilt Catch (block/catch) for the global shortcut.
+    ln -s ${lib.getExe block-catch} src-tauri/binaries/catch-${rustTarget}
+
+    # Berd asks at every start to move itself into /Applications unless it runs from there,
+    # and accepting copies the bundle out of the Nix store, where updates never reach it.
+    # Skip the prompt as upstream does for debug builds; nix-darwin or Home Manager link the
+    # app into an Applications folder.
+    substituteInPlace src-tauri/src/services/installer_media.rs \
+      --replace-fail 'if cfg!(debug_assertions) {' 'if true {'
   '';
 
   nativeBuildInputs = [
@@ -99,23 +117,34 @@ rustPlatform.buildRustPackage (finalAttrs: {
     nodejs_24
     pnpm
     pnpmConfigHook
-    wrapGAppsHook3
     makeBinaryWrapper
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook3 ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # build.rs compiles the AirPods bridge (a SwiftPM package) through swift-rs.
+    swift
+    swiftpm
+    xcbuild
+    writableTmpDirAsHomeHook
   ];
 
   buildInputs = [
-    alsa-lib
     # patchShebangs needs sh in the host inputs for the Catch stub (strictDeps)
     bashNonInteractive
-    gtk3
-    libsoup_3
-    webkitgtk_4_1
-    glib-networking
     # shared sherpa-onnx links against onnxruntime
     onnxruntime
     sherpa-onnx
   ]
-  ++ gstreamerPlugins;
+  ++ lib.optionals stdenv.hostPlatform.isLinux (
+    [
+      alsa-lib
+      gtk3
+      libsoup_3
+      webkitgtk_4_1
+      glib-networking
+    ]
+    ++ gstreamerPlugins
+  );
 
   env = {
     SHERPA_ONNX_LIB_DIR = "${lib.getLib sherpa-onnx}/lib";
@@ -130,6 +159,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     VITE_UPDATER_ENABLED = "false";
     # As in upstream's release: telemetry stays off until the user opts in (TELEMETRY.md).
     VITE_ENVIRONMENT = "production";
+  }
+  // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+    # swift-rs asks this clang for its compiler-rt directory (default /usr/bin/clang).
+    SWIFT_RS_CLANG = "${stdenv.cc}/bin/clang";
   };
 
   # cmake is only used by dependency build scripts
@@ -167,6 +200,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # The telemetry tests build a reqwest client, which needs CA certificates even for the local
   # test gateway.
   nativeCheckInputs = [ cacert ];
+  # The berdctl server tests listen on 127.0.0.1.
+  __darwinAllowLocalNetworking = true;
 
   # The Rust test lanes of upstream's `just tauri-test`, which its CI runs on ubuntu-latest in
   # the dev profile, with the sidecars and resources left out of the Tauri config like there.
@@ -191,7 +226,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     runHook postCheck
   '';
 
-  postInstall = ''
+  postInstall = lib.optionalString stdenv.hostPlatform.isLinux ''
     # The app finds its sidecars next to its own executable and its resources (distro/,
     # runtime-config.json, sounds) at ../lib/Berd relative to the executable's directory;
     # without that directory Tauri falls back to /usr/lib/Berd. Keep all of it together under
@@ -207,41 +242,58 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail 'Categories=' 'Categories=Development;Utility;'
   '';
 
-  # Wrap only the app, not the sidecars; see postFixup.
+  # Wrap only the app, not the sidecars; see postFixup. No SSL_CERT_FILE: Berd and goosed find
+  # the system CA store, which includes certificates added with security.pki.
   dontWrapGApps = true;
 
-  preFixup = ''
-    gappsWrapperArgs+=(
-      --set-default SSL_CERT_FILE "${cacert}/etc/ssl/certs/ca-bundle.crt"
-    )
-  '';
-
-  postFixup = ''
-    makeWrapper $out/libexec/berd/bin/Berd $out/bin/berd "''${gappsWrapperArgs[@]}"
-    # berdctl talks to a running Berd; agents started by Berd get it via BERDCTL_BIN.
-    ln -s ../libexec/berd/bin/berdctl $out/bin/berdctl
-  '';
+  postFixup =
+    lib.optionalString stdenv.hostPlatform.isLinux ''
+      makeWrapper $out/libexec/berd/bin/Berd $out/bin/berd "''${gappsWrapperArgs[@]}"
+      # berdctl talks to a running Berd; agents started by Berd get it via BERDCTL_BIN.
+      ln -s ../libexec/berd/bin/berdctl $out/bin/berdctl
+    ''
+    + lib.optionalString stdenv.hostPlatform.isDarwin ''
+      mkdir -p $out/bin
+      makeWrapper $out/Applications/Berd.app/Contents/MacOS/Berd $out/bin/berd
+      ln -s ../Applications/Berd.app/Contents/MacOS/berdctl $out/bin/berdctl
+    '';
 
   passthru = {
-    tests.sidecars = runCommand "berd-sidecars-test" { } ''
-      # goose writes its logs under HOME even for --help.
-      export HOME=$(mktemp -d)
-      for executable in Berd goosed berdctl berd-monitor catch; do
-        test -x ${finalAttrs.finalPackage}/libexec/berd/bin/$executable
-      done
-      # Tauri's resource dir, next to the executable's directory.
-      test -f ${finalAttrs.finalPackage}/libexec/berd/lib/Berd/runtime-config.json
-      # The updater registers only with a public key in the config, and release channels come
-      # from this catalog; both are only in upstream's release overlay.
-      if [ -e ${finalAttrs.finalPackage}/libexec/berd/lib/Berd/release-channels.json ]; then
-        echo "release-channels.json is bundled: the updater would be active" >&2
-        exit 1
-      fi
-      ${finalAttrs.finalPackage}/libexec/berd/bin/goosed serve --help | grep -q -- '--allowed-origin'
-      ${finalAttrs.finalPackage}/bin/berdctl --help | grep -q 'Control the Berd desktop app'
-      ${finalAttrs.finalPackage}/libexec/berd/bin/berd-monitor --help | grep -q 'Berd session'
-      touch $out
-    '';
+    tests.sidecars =
+      let
+        # Next to the executable, and Tauri's resource dir.
+        layout =
+          if stdenv.hostPlatform.isDarwin then
+            {
+              bin = "Applications/Berd.app/Contents/MacOS";
+              resources = "Applications/Berd.app/Contents/Resources";
+            }
+          else
+            {
+              bin = "libexec/berd/bin";
+              resources = "libexec/berd/lib/Berd";
+            };
+        bin = "${finalAttrs.finalPackage}/${layout.bin}";
+        resources = "${finalAttrs.finalPackage}/${layout.resources}";
+      in
+      runCommand "berd-sidecars-test" { } ''
+        # goose writes its logs under HOME even for --help.
+        export HOME=$(mktemp -d)
+        for executable in Berd goosed berdctl berd-monitor catch; do
+          test -x ${bin}/$executable
+        done
+        test -f ${resources}/runtime-config.json
+        # The updater registers only with a public key in the config, and release channels come
+        # from this catalog; both are only in upstream's release overlay.
+        if [ -e ${resources}/release-channels.json ]; then
+          echo "release-channels.json is bundled: the updater would be active" >&2
+          exit 1
+        fi
+        ${bin}/goosed serve --help | grep -q -- '--allowed-origin'
+        ${finalAttrs.finalPackage}/bin/berdctl --help | grep -q 'Control the Berd desktop app'
+        ${bin}/berd-monitor --help | grep -q 'Berd session'
+        touch $out
+      '';
     updateScript = nix-update-script { };
   };
 
@@ -252,7 +304,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     license = lib.licenses.asl20;
     mainProgram = "berd";
     maintainers = [ lib.maintainers.kleinbem ];
-    # Not tested on darwin yet (needs the Catch sidecar and the macOS bundle layout).
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 })
