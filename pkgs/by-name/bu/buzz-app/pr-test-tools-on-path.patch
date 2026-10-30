@@ -1,0 +1,54 @@
+diff --git a/src-tauri/src/host_command.rs b/src-tauri/src/host_command.rs
+index 0d445ef8ff..f0b578b4e4 100644
+--- a/src-tauri/src/host_command.rs
++++ b/src-tauri/src/host_command.rs
+@@ -630,8 +630,7 @@ async fn app_exit_kills_a_running_login_shell_probe() {
+ 
+     #[tokio::test]
+     async fn larger_output_requires_a_bounded_manifest_opt_in() {
+-        let (_directory, path) =
+-            executable("/usr/bin/head -c 5000 /dev/zero | /usr/bin/tr '\\000' x");
++        let (_directory, path) = executable("head -c 5000 /dev/zero | tr '\\000' x");
+         let mut command = super::HostCommand {
+             id: "inventory".into(),
+             program: "env".into(),
+diff --git a/src-tauri/src/relay/media_preparation.rs b/src-tauri/src/relay/media_preparation.rs
+index ce9bd30b65..bf79bb0e03 100644
+--- a/src-tauri/src/relay/media_preparation.rs
++++ b/src-tauri/src/relay/media_preparation.rs
+@@ -641,7 +641,7 @@ async fn running_conversion_is_killed_on_cancel_deadline_and_size() {
+                 wait_for_conversion(child, &output, false, &mut cancelled, timeout, limit).await,
+                 Err(expected)
+             );
+-            assert!(!std::process::Command::new("/bin/kill")
++            assert!(!std::process::Command::new("kill")
+                 .args(["-0", &pid.to_string()])
+                 .stderr(Stdio::null())
+                 .status()
+diff --git a/src-tauri/src/terminal/tests.rs b/src-tauri/src/terminal/tests.rs
+index dea5ba1bcd..2f50631c1b 100644
+--- a/src-tauri/src/terminal/tests.rs
++++ b/src-tauri/src/terminal/tests.rs
+@@ -21,7 +21,8 @@ fn shell() -> CommandBuilder {
+         .get_or_init(|| {
+             let mut cmd = CommandBuilder::new("/bin/sh");
+             cmd.env_clear();
+-            cmd.env("PATH", "/usr/bin:/bin");
++            // The test's own PATH: tools aren't in /usr/bin or /bin everywhere.
++            cmd.env("PATH", std::env::var_os("PATH").unwrap_or_default());
+             cmd.env("HOME", "/");
+             cmd.env("SHELL", "/bin/sh");
+             cmd
+diff --git a/src-tauri/src/test_executable.rs b/src-tauri/src/test_executable.rs
+index a01221b9ac..fd09db8988 100644
+--- a/src-tauri/src/test_executable.rs
++++ b/src-tauri/src/test_executable.rs
+@@ -16,7 +16,7 @@ pub(crate) fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
+     source.push(".source");
+     let source = Path::new(&source);
+     std::fs::write(source, contents).unwrap();
+-    let status = std::process::Command::new("/bin/cp")
++    let status = std::process::Command::new("cp")
+         .arg(source)
+         .arg(path)
+         .status()

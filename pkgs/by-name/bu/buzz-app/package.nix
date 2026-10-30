@@ -118,6 +118,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
   };
 
   patches = [
+    # TEST ONLY: block/buzz-app #1778 #1779 #1780 #1961
+    ./pr-test-wipe-refusal-release.patch
+    ./pr-test-tools-on-path.patch
+    ./pr-test-git-shim-fixture.patch
+    ./pr-test-build-ancestor.patch
     # On Linux the app makes itself the default buzz:// handler on every start
     # (on purpose upstream, so that it wins over Buzz 0.X): tauri-plugin-deep-link
     # writes ~/.local/share/applications/<binary>-handler.desktop with the running
@@ -248,24 +253,16 @@ rustPlatform.buildRustPackage (finalAttrs: {
     [
       # Nixpkgs runs the tests in the release profile; this one expects the
       # debug-build refusal (https://github.com/block/buzz-app/pull/1778).
-      "sign_out::tests::production_acl_lets_the_dialog_ask_why_wipe_is_unavailable"
       # A `#!/usr/bin/env` script; the sandbox has no /usr/bin/env.
       "host_command::tests::env_shebang_uses_the_path_that_resolved_the_command"
       # Expects an error because the temporary directory has no parent named
       # `build`; the sandbox's temporary directory is /build (or /nix/build/…).
-      "build_resources::tests::leaves_unrelated_output_and_rejects_an_unknown_cargo_layout"
       # The login shell gets its PATH from /etc/profile and the probe runs
       # /usr/bin/env; the sandbox has neither.
       "terminal::tests::real_spawn_fences_secrets_and_preserves_login_context"
       # The tests' shell gets PATH=/usr/bin:/bin, so it can't find
       # sleep, stty or env in the sandbox
       # (https://github.com/block/buzz-app/pull/1779).
-      "terminal::tests::coalesced_reads_return_sparse_output_promptly"
-      "terminal::tests::each_coalesced_read_is_bounded_while_a_child_writes_continuously"
-      "terminal::tests::foreground_job_receives_ctrl_c_and_close_stops_job_control_group"
-      "terminal::tests::interactive_input_resize_and_owner_isolation"
-      "terminal::tests::large_final_output_is_fully_drained_before_exited"
-      "terminal::tests::shutdown_kills_a_signal_ignoring_group_and_reaps_the_leader"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       # The login shell probe runs /usr/bin/env, printf and printenv, which the
@@ -274,14 +271,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "host_command::tests::app_exit_kills_a_running_login_shell_probe"
       # Expects the Xcode git shim at /usr/bin/git
       # (https://github.com/block/buzz-app/pull/1780).
-      "relay::project_git::tests::macos_git_selection_skips_unavailable_shim_without_launching_it"
       # Sets a macOS ACL with `chmod +a`, which the build's coreutils chmod lacks;
       # the sandbox has no /bin/chmod.
       "sign_out::tests::an_uninspectable_kept_registry_stops_the_wipe_and_the_retry_keeps_it"
       # Same PATH as the terminal tests above, which shows up as EPERM here
       # (https://github.com/block/buzz-app/pull/1779).
-      "terminal::tests::a_held_or_closing_session_does_not_block_another_session"
-      "terminal::tests::bounded_input_and_session_admission"
     ]
   );
 
