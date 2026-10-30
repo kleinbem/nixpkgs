@@ -5,6 +5,7 @@
   fetchFromGitHub,
   fetchPnpmDeps,
   runCommand,
+  callPackage,
   cargo-tauri,
   cmake,
   pkg-config,
@@ -252,6 +253,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '';
 
   passthru = {
+    tests.voice = callPackage ./voice-test.nix { berd = finalAttrs.finalPackage; };
     tests.sidecars =
       let
         # Next to the executable, and Tauri's resource dir.
