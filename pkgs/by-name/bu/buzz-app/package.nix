@@ -137,15 +137,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
   postPatch = ''
     install -Dm755 ${goose-acp}/bin/goose-acp src-tauri/resources/bin/goose-acp
 
-    # Test fixtures run tools from /bin and /usr/bin, which the build sandbox
-    # lacks; https://github.com/block/buzz-app/pull/1779 runs them from PATH.
-    substituteInPlace src-tauri/src/test_executable.rs \
-      --replace-fail '"/bin/cp"' '"${lib.getExe' coreutils "cp"}"'
-    substituteInPlace src-tauri/src/relay/media_preparation.rs \
-      --replace-fail '"/bin/kill"' '"${lib.getExe' coreutils "kill"}"'
-    substituteInPlace src-tauri/src/host_command.rs \
-      --replace-fail /usr/bin/head ${lib.getExe' coreutils "head"} \
-      --replace-fail /usr/bin/tr ${lib.getExe' coreutils "tr"}
   ''
   + lib.optionalString stdenv.hostPlatform.isLinux ''
     # The notification tests start `dbus-daemon --session`, which reads
