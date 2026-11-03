@@ -1,17 +1,29 @@
 {
   lib,
-  fetchurl,
   stdenvNoCC,
+  fetchurl,
   buildFHSEnv,
   dpkg,
   autoPatchelfHook,
-  makeWrapper,
-  nss,
-  nspr,
-  mesa,
+  makeBinaryWrapper,
   alsa-lib,
-  pipewire,
-  libxkbcommon,
+  at-spi2-atk,
+  at-spi2-core,
+  atk,
+  cairo,
+  cups,
+  dbus,
+  expat,
+  glib,
+  gtk3,
+  libcap_ng,
+  libdrm,
+  libgbm,
+  libglvnd,
+  libnotify,
+  libpulseaudio,
+  libseccomp,
+  libsecret,
   libx11,
   libxcb,
   libxcomposite,
@@ -19,57 +31,59 @@
   libxext,
   libxfixes,
   libxrandr,
-  at-spi2-atk,
-  at-spi2-core,
-  cups,
-  dbus,
-  gtk3,
+  libxkbcommon,
+  nspr,
+  nss,
   pango,
-  cairo,
-  expat,
-  glib,
+  pipewire,
   systemdLibs,
-  libglvnd,
-  libsecret,
-  qemu_kvm,
   OVMF,
-  virtiofsd,
-  asar,
-  python3,
-  nodejs,
   xdg-utils,
   git,
   openssh,
   procps,
-  passwordStore ? null,
+  adwaita-icon-theme,
+  gsettings-desktop-schemas,
+  commandLineArgs ? [ ],
 }:
 
 let
-  # Libraries Chromium may dlopen rather than DT_NEEDED-link
-  runtimeLibs = [
-    libsecret
-    libglvnd
-  ];
+  pname = "claude-desktop";
+  version = "4.4212.0";
 
-  # OVMF.fd only ships ${fwPrefix}_{CODE,VARS}.fd, with fwPrefix = AAVMF on aarch64
   fwPrefix = if stdenvNoCC.hostPlatform.isAarch64 then "AAVMF" else "OVMF";
   ovmfCode = "${OVMF.fd}/FV/${fwPrefix}_CODE.fd";
   ovmfVars = "${OVMF.fd}/FV/${fwPrefix}_VARS.fd";
 
+  meta = {
+    description = "Desktop application for Claude.ai";
+    homepage = "https://claude.ai/download";
+    license = lib.licenses.unfree;
+    mainProgram = "claude-desktop";
+    maintainers = with lib.maintainers; [
+      minegameYTB
+      kleinbem
+    ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+  };
+
   unwrapped = stdenvNoCC.mkDerivation (finalAttrs: {
-    pname = "claude-desktop";
-    version = "2.37337.1";
+    inherit pname version meta;
 
     src =
       if stdenvNoCC.hostPlatform.system == "x86_64-linux" then
         fetchurl {
           url = "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_${finalAttrs.version}_amd64.deb";
-          hash = "sha256-QXRbCRTw/1FjGh/xu0A7g2v1yZWEXMpnQt05vKOi2hQ=";
+          hash = "sha256-T89ljg/IlTkKuCWTKHKB37ziYbDsPqkAYOgti/v9eoQ=";
         }
       else if stdenvNoCC.hostPlatform.system == "aarch64-linux" then
         fetchurl {
           url = "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_${finalAttrs.version}_arm64.deb";
-          hash = "sha256-rW8doqEUIV0qc8U8GploH5wLvhSLkvkG1jWy7+2DXNw=";
+          hash = "sha256-cCLcVt4w4L63+gp9yE4JqgDX+dTht/kwQ7Mrr3Wi9tg=";
         }
       else
         throw "Unsupported system: ${stdenvNoCC.hostPlatform.system}";
@@ -77,19 +91,24 @@ let
     nativeBuildInputs = [
       dpkg
       autoPatchelfHook
-      makeWrapper
-      asar
+      makeBinaryWrapper
     ];
 
     buildInputs = [
-      # Electron/Chromium
-      nss
-      nspr
-      mesa
-      libglvnd
       alsa-lib
-      pipewire
-      libxkbcommon
+      at-spi2-atk
+      at-spi2-core
+      atk
+      cairo
+      cups
+      dbus
+      expat
+      glib
+      gtk3
+      libcap_ng
+      libdrm
+      libgbm
+      libseccomp
       libx11
       libxcb
       libxcomposite
@@ -97,216 +116,125 @@ let
       libxext
       libxfixes
       libxrandr
-      at-spi2-atk
-      at-spi2-core
-      cups
-      dbus
-      gtk3
+      libxkbcommon
+      nspr
+      nss
       pango
-      cairo
-      expat
-      glib
+      pipewire
       systemdLibs
-
-      # For keyring support
       libsecret
     ];
 
+    appendRunpaths = [
+      "${libglvnd}/lib"
+      "${libnotify}/lib"
+      "${libpulseaudio}/lib"
+      "${libsecret}/lib"
+      "${pipewire}/lib"
+    ];
+
+    strictDeps = true;
+    __structuredAttrs = true;
+
     unpackPhase = ''
       runHook preUnpack
-
-      dpkg-deb --fsys-tarfile $src | tar --extract
-
+      dpkg-deb --fsys-tarfile "$src" | tar -x --no-same-owner --no-same-permissions
       runHook postUnpack
     '';
 
     installPhase = ''
       runHook preInstall
 
-      mkdir -p $out
-      mv usr/* $out
+      mkdir -p "$out"
+      cp -r usr/lib usr/share "$out/"
+      rm -rf "$out/share/lintian"
 
-      # Drop bundled virtiofsd, we use nixpkgs virtiofsd instead
-      # (patched into app.asar in postFixup + provided in FHSEnv).
-      # This avoids needing libseccomp/libcap_ng for autoPatchelf.
-      rm -f $out/lib/claude-desktop/resources/virtiofsd
+      # Drop SUID sandbox helper: NixOS uses unprivileged user namespaces instead.
+      rm -f "$out/lib/claude-desktop/chrome-sandbox"
+
+      # Point .desktop Exec at wrapper
+      desktopFile=$(echo "$out/share/applications/"*.desktop)
+      substituteInPlace "$desktopFile" \
+        --replace-fail "Exec=claude-desktop" "Exec=$out/bin/claude-desktop"
+
+      mkdir -p "$out/bin"
+      makeWrapper "$out/lib/claude-desktop/claude-desktop" "$out/bin/claude-desktop" \
+        --prefix XDG_DATA_DIRS : "${adwaita-icon-theme}/share:${gsettings-desktop-schemas}/share:$out/share" \
+        --prefix PATH : "${lib.makeBinPath [ xdg-utils ]}" \
+        --add-flags "--ozone-platform-hint=auto" \
+        --add-flags "--enable-features=GlobalShortcutsPortal,WaylandWindowDecorations" \
+        --add-flags "--enable-wayland-ime" \
+        --add-flags "--wayland-text-input-version=3" \
+        --add-flags "\''${CLAUDE_USE_X11:+--ozone-platform=x11}" \
+        --set-default GTK_USE_PORTAL "1" \
+        --set CHROME_DESKTOP "com.anthropic.Claude.desktop" \
+        ${lib.optionalString (
+          commandLineArgs != [ ]
+        ) "--add-flags ${lib.escapeShellArg (lib.escapeShellArgs commandLineArgs)}"}
 
       runHook postInstall
     '';
-
-    postFixup = ''
-      # Patch app.asar for Cowork VM paths (OVMF firmware + virtiofsd).
-      # Use --replace-fail so upstream string drift fails the build instead of
-      # silently shipping a broken Cowork VM.
-      asarRoot=$out/lib/claude-desktop/resources
-      if [ ! -f "$asarRoot/app.asar" ]; then
-        echo "error: expected app.asar at $asarRoot/app.asar" >&2
-        exit 1
-      fi
-
-      work=$(mktemp -d)
-      asar extract "$asarRoot/app.asar" "$work/contents"
-
-      cd "$work/contents"
-
-      # the chunk carrying the Cowork VM literals rotates its name every release
-      coworkJs=$(grep -rl '/usr/libexec/virtiofsd' .vite/build)
-      if [ "$(printf '%s\n' "$coworkJs" | wc -l)" -ne 1 ]; then
-        echo "expected exactly one file with the Cowork literals, got: $coworkJs" >&2
-        exit 1
-      fi
-
-      substituteInPlace "$coworkJs" \
-        --replace-fail '/usr/share/OVMF/OVMF_CODE_4M.fd' '${ovmfCode}' \
-        --replace-fail '/usr/share/OVMF/OVMF_CODE.fd' '${ovmfCode}' \
-        --replace-fail '/usr/libexec/virtiofsd' '${virtiofsd}/bin/virtiofsd' \
-        --replace-fail '/usr/bin/virtiofsd' '${virtiofsd}/bin/virtiofsd'
-
-      if grep -rE '/usr/share/OVMF/OVMF_CODE|/usr/(bin|libexec)/virtiofsd' .vite/build; then
-        echo "unpatched FHS paths remain in app.asar" >&2
-        exit 1
-      fi
-
-      cd - >/dev/null
-
-      # Keep every executable/native asset that upstream ships outside app.asar.
-      # Fail when a future release adds another kind that needs explicit handling.
-      stray=$(find "$asarRoot/app.asar.unpacked" -type f \
-        ! -name '*.node' \
-        ! -name 'spawn-helper' \
-        ! -path '*/resources/github-mcp/github-mcp-server')
-      if [ -n "$stray" ]; then
-        echo "unexpected files in app.asar.unpacked:" >&2
-        echo "$stray" >&2
-        exit 1
-      fi
-
-      asar pack "$work/contents" "$work/app.asar" \
-        --unpack "{**/*.node,**/spawn-helper}" \
-        --unpack-dir "resources/github-mcp"
-      cp -f "$work/app.asar" "$asarRoot/app.asar"
-      if [ -d "$work/app.asar.unpacked" ]; then
-        rm -rf "$asarRoot/app.asar.unpacked"
-        cp -r "$work/app.asar.unpacked" "$asarRoot/app.asar.unpacked"
-      fi
-      # asar recreates unpacked files read-only; Electron spawns this helper.
-      chmod 755 "$asarRoot/app.asar.unpacked/resources/github-mcp/github-mcp-server"
-      rm -rf "$work"
-
-      wrapProgram $out/bin/claude-desktop \
-        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath runtimeLibs} \
-        --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib:/run/opengl-driver-32/lib \
-        --prefix PATH : ${
-          lib.makeBinPath [
-            python3
-            nodejs
-            xdg-utils
-            git
-            openssh
-            procps
-          ]
-        } \
-        ${lib.optionalString (passwordStore != null) ''
-          --add-flags "--password-store=${passwordStore}"
-        ''}
-    '';
-
-    passthru.updateScript = ./update.sh;
-
-    meta = {
-      description = "Desktop application for Claude.ai";
-      homepage = "https://claude.ai/download";
-      license = lib.licenses.unfree;
-      mainProgram = "claude-desktop";
-      maintainers = with lib.maintainers; [
-        minegameYTB
-        ooonea
-        diwangs
-      ];
-      platforms = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
-      sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
-    };
   });
-
-  fhsEnv = buildFHSEnv {
-    pname = "claude-desktop-fhsenv";
-    inherit (unwrapped) version;
-
-    targetPkgs =
-      pkgs: with pkgs; [
-        unwrapped
-        glibc
-        qemu_kvm
-        python3
-        nodejs
-        libsecret
-        libglvnd
-        mesa
-        virtiofsd
-        git
-        openssh
-        procps
-      ];
-
-    extraBuildCommands = ''
-      # $fwPrefix firmware (the app picks the name from process.arch)
-      mkdir -p "$out/usr/share/${fwPrefix}"
-      ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE.fd"
-      ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE_4M.fd"
-      ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS.fd"
-      ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS_4M.fd"
-
-      # virtiofsd fallback paths
-      mkdir -p "$out/usr/libexec" "$out/usr/bin"
-      ln -sf ${virtiofsd}/bin/virtiofsd "$out/usr/libexec/virtiofsd"
-      ln -sf ${virtiofsd}/bin/virtiofsd "$out/usr/bin/virtiofsd"
-
-      # Absolute-path helpers some app code still probes under /usr/bin
-      mkdir -p "$out/usr/bin"
-      ln -sf ${lib.getExe git} "$out/usr/bin/git"
-      ln -sf ${openssh}/bin/ssh "$out/usr/bin/ssh"
-      ln -sf ${procps}/bin/pgrep "$out/usr/bin/pgrep"
-    '';
-
-    extraBwrapArgs = [
-      "--dev-bind-try /dev/kvm /dev/kvm"
-      "--dev-bind-try /dev/vhost-vsock /dev/vhost-vsock"
-      "--dev-bind-try /dev/vhost-net /dev/vhost-net"
-      "--dev-bind-try /dev/net/tun /dev/net/tun"
-    ];
-
-    extraInstallCommands = ''
-      mkdir -p "$out/share"
-      ln -s ${unwrapped}/share/* "$out/share/"
-    '';
-
-    runScript = "${unwrapped}/bin/claude-desktop";
-
-    # Avoid orphaned Electron after the launcher / nix run exits
-    dieWithParent = true;
-  };
 in
-stdenvNoCC.mkDerivation {
-  pname = "claude-desktop";
-  inherit (unwrapped) version;
-  strictDeps = true;
-  __structuredAttrs = true;
+buildFHSEnv {
+  inherit pname version;
 
-  dontUnpack = true;
-  dontConfigure = true;
-  dontBuild = true;
+  targetPkgs = pkgs: [
+    unwrapped
 
-  installPhase = ''
-    mkdir -p "$out/bin" "$out/share"
-    ln -s ${fhsEnv}/bin/claude-desktop-fhsenv "$out/bin/claude-desktop"
-    ln -s ${fhsEnv}/share/* "$out/share/"
+    # Graphics and dynamic loader for Chromium / GPU acceleration
+    pkgs.glibc
+    pkgs.libglvnd
+    pkgs.mesa
+    pkgs.vulkan-loader
+
+    # Virtualization tooling for Cowork VMs
+    pkgs.qemu_kvm
+
+    # Runtime CLI utilities invoked by Claude Code, MCP servers, and Cowork
+    pkgs.python3
+    pkgs.nodejs
+    pkgs.git
+    pkgs.openssh
+    pkgs.procps
+    pkgs.xdg-utils
+  ];
+
+  extraBuildCommands = ''
+    # Firmware paths probed by Cowork VM
+    mkdir -p "$out/usr/share/${fwPrefix}"
+    ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE.fd"
+    ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE_4M.fd"
+    ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS.fd"
+    ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS_4M.fd"
+
+    # Use Anthropic's bundled virtiofsd (patchelfed above with libseccomp/libcap_ng) for Cowork VM fallback
+    mkdir -p "$out/usr/libexec"
+    ln -sf "${unwrapped}/lib/claude-desktop/resources/virtiofsd" "$out/usr/libexec/virtiofsd"
+
+    # Absolute-path helpers
+    mkdir -p "$out/usr/bin"
+    ln -sf ${lib.getExe git} "$out/usr/bin/git"
+    ln -sf ${openssh}/bin/ssh "$out/usr/bin/ssh"
+    ln -sf ${procps}/bin/pgrep "$out/usr/bin/pgrep"
   '';
 
-  inherit (unwrapped) meta;
-  passthru = unwrapped.passthru // {
-    inherit unwrapped fhsEnv;
+  extraInstallCommands = ''
+    mkdir -p "$out/share"
+    cp -r ${unwrapped}/share/* "$out/share/"
+    chmod -R u+w "$out/share"
+    substituteInPlace "$out/share/applications/"*.desktop \
+      --replace-fail "${unwrapped}/bin/claude-desktop" "$out/bin/claude-desktop"
+    ln -sf com.anthropic.Claude.desktop "$out/share/applications/claude-desktop.desktop"
+  '';
+
+  runScript = "${unwrapped}/bin/claude-desktop";
+  dieWithParent = true;
+
+  passthru = {
+    inherit unwrapped;
+    updateScript = ./update.sh;
   };
+
+  inherit meta;
 }

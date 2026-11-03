@@ -6,7 +6,7 @@ script_dir=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 package_file="$script_dir/package.nix"
 cd "$(git -C "$script_dir" rev-parse --show-toplevel)"
 
-### Fetch latest version from apt repository metadata
+# Fetch latest version from apt repository metadata
 new_version=$(curl -sS "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages" \
   | sed -nE 's/^Version: ([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' \
   | sort -V \
@@ -30,7 +30,7 @@ update_hash() {
     local hash
     hash=$(nix-prefetch-url --type sha256 "$url")
     local sri
-    sri=$(nix --extra-experimental-features nix-command hash to-sri "sha256:$hash")
+    sri=$(nix hash convert --hash-algo sha256 --to sri "sha256:$hash")
     update-source-version claude-desktop "$new_version" "$sri" \
         --file="$package_file" \
         --source-key=passthru.unwrapped.src \
