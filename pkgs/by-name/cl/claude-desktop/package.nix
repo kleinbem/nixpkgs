@@ -4,6 +4,7 @@
   fetchurl,
   buildFHSEnv,
   dpkg,
+  asar,
   autoPatchelfHook,
   makeBinaryWrapper,
   alsa-lib,
@@ -90,6 +91,7 @@ let
 
     nativeBuildInputs = [
       dpkg
+      asar
       autoPatchelfHook
       makeBinaryWrapper
     ];
@@ -151,6 +153,17 @@ let
 
       # Drop SUID sandbox helper: NixOS uses unprivileged user namespaces instead.
       rm -f "$out/lib/claude-desktop/chrome-sandbox"
+
+      # Patch Google OAuth deep-link callback handling in app.asar to prevent silent eviction on Linux second-instance handoff
+      asar extract "$out/lib/claude-desktop/resources/app.asar" asar-unpacked
+      mainChunk=$(grep -l "desktop_login_callback_evicted" asar-unpacked/.vite/build/index.chunk-*.js)
+      substituteInPlace "$mainChunk" \
+        --replace-fail "!(r!=null&&!i&&gfr(r.getURL()))" "!(r!=null&&gfr(r.getURL()))" \
+        --replace-fail 'var hfr=new Set(["/login","/gift/redeem"]);' 'var hfr=new Set(["/login","/gift/redeem","/",""]);' \
+        --replace-fail 'function EU(e){let t=e.webContents;return!t||t.isDestroyed()||!ufr.has(t)}' 'function EU(e){let t=e.webContents;return!t||t.isDestroyed()}'
+      rm -rf asar-unpacked/compile-cache
+      asar pack asar-unpacked "$out/lib/claude-desktop/resources/app.asar"
+      rm -rf asar-unpacked
 
       # Point .desktop Exec at wrapper
       desktopFile=$(echo "$out/share/applications/"*.desktop)
