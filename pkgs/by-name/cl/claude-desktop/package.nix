@@ -64,6 +64,8 @@ let
     maintainers = with lib.maintainers; [
       minegameYTB
       kleinbem
+      ooonea
+      diwangs
     ];
     platforms = [
       "x86_64-linux"
@@ -189,65 +191,80 @@ let
     '';
   });
 in
-buildFHSEnv {
-  inherit pname version;
+let
+  fhsEnv = buildFHSEnv {
+    inherit pname version;
 
-  targetPkgs = pkgs: [
-    unwrapped
+    targetPkgs = pkgs: [
+      unwrapped
 
-    # Graphics and dynamic loader for Chromium / GPU acceleration
-    pkgs.glibc
-    pkgs.libglvnd
-    pkgs.mesa
-    pkgs.vulkan-loader
+      # Graphics and dynamic loader for Chromium / GPU acceleration
+      pkgs.glibc
+      pkgs.libglvnd
+      pkgs.mesa
+      pkgs.vulkan-loader
 
-    # Virtualization tooling for Cowork VMs
-    pkgs.qemu_kvm
+      # Virtualization tooling for Cowork VMs
+      pkgs.qemu_kvm
 
-    # Runtime CLI utilities invoked by Claude Code, MCP servers, and Cowork
-    pkgs.python3
-    pkgs.nodejs
-    pkgs.git
-    pkgs.openssh
-    pkgs.procps
-    pkgs.xdg-utils
-  ];
+      # Runtime CLI utilities invoked by Claude Code, MCP servers, and Cowork
+      pkgs.python3
+      pkgs.nodejs
+      pkgs.git
+      pkgs.openssh
+      pkgs.procps
+      pkgs.xdg-utils
+    ];
 
-  extraBuildCommands = ''
-    # Firmware paths probed by Cowork VM
-    mkdir -p "$out/usr/share/${fwPrefix}"
-    ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE.fd"
-    ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE_4M.fd"
-    ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS.fd"
-    ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS_4M.fd"
+    extraBuildCommands = ''
+      # Firmware paths probed by Cowork VM
+      mkdir -p "$out/usr/share/${fwPrefix}"
+      ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE.fd"
+      ln -s ${ovmfCode} "$out/usr/share/${fwPrefix}/${fwPrefix}_CODE_4M.fd"
+      ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS.fd"
+      ln -s ${ovmfVars} "$out/usr/share/${fwPrefix}/${fwPrefix}_VARS_4M.fd"
 
-    # Use Anthropic's bundled virtiofsd (patchelfed above with libseccomp/libcap_ng) for Cowork VM fallback
-    mkdir -p "$out/usr/libexec"
-    ln -sf "${unwrapped}/lib/claude-desktop/resources/virtiofsd" "$out/usr/libexec/virtiofsd"
+      # Use Anthropic's bundled virtiofsd (patchelfed above with libseccomp/libcap_ng) for Cowork VM fallback
+      mkdir -p "$out/usr/libexec"
+      ln -sf "${unwrapped}/lib/claude-desktop/resources/virtiofsd" "$out/usr/libexec/virtiofsd"
 
-    # Absolute-path helpers
-    mkdir -p "$out/usr/bin"
-    ln -sf ${lib.getExe git} "$out/usr/bin/git"
-    ln -sf ${openssh}/bin/ssh "$out/usr/bin/ssh"
-    ln -sf ${procps}/bin/pgrep "$out/usr/bin/pgrep"
+      # Absolute-path helpers
+      mkdir -p "$out/usr/bin"
+      ln -sf ${lib.getExe git} "$out/usr/bin/git"
+      ln -sf ${openssh}/bin/ssh "$out/usr/bin/ssh"
+      ln -sf ${procps}/bin/pgrep "$out/usr/bin/pgrep"
+    '';
+
+    extraInstallCommands = ''
+      mkdir -p "$out/share"
+      cp -r ${unwrapped}/share/* "$out/share/"
+      chmod -R u+w "$out/share"
+      substituteInPlace "$out/share/applications/"*.desktop \
+        --replace-fail "${unwrapped}/bin/claude-desktop" "$out/bin/claude-desktop"
+      ln -sf com.anthropic.Claude.desktop "$out/share/applications/claude-desktop.desktop"
+    '';
+
+    runScript = "${unwrapped}/bin/claude-desktop";
+    dieWithParent = true;
+  };
+in
+stdenvNoCC.mkDerivation {
+  inherit pname version meta;
+  strictDeps = true;
+  __structuredAttrs = true;
+
+  dontUnpack = true;
+  dontConfigure = true;
+  dontBuild = true;
+
+  installPhase = ''
+    mkdir -p "$out/bin" "$out/share"
+    ln -s "${fhsEnv}/bin/${pname}" "$out/bin/${pname}"
+    ln -s ${fhsEnv}/share/* "$out/share/"
   '';
-
-  extraInstallCommands = ''
-    mkdir -p "$out/share"
-    cp -r ${unwrapped}/share/* "$out/share/"
-    chmod -R u+w "$out/share"
-    substituteInPlace "$out/share/applications/"*.desktop \
-      --replace-fail "${unwrapped}/bin/claude-desktop" "$out/bin/claude-desktop"
-    ln -sf com.anthropic.Claude.desktop "$out/share/applications/claude-desktop.desktop"
-  '';
-
-  runScript = "${unwrapped}/bin/claude-desktop";
-  dieWithParent = true;
 
   passthru = {
-    inherit unwrapped;
+    inherit unwrapped fhsEnv;
     updateScript = ./update.sh;
   };
-
-  inherit meta;
 }
