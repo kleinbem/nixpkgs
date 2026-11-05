@@ -7449,6 +7449,8 @@ with pkgs;
       inherit modules;
     };
 
+  mesh-llmPlugins = recurseIntoAttrs (callPackage ../by-name/me/mesh-llm/plugins { });
+
   nushellPlugins = recurseIntoAttrs (callPackage ../by-name/nu/nushell/plugins { });
 
   net-tools =
