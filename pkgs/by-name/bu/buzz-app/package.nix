@@ -316,10 +316,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     gitMinimal
     # A host process test detaches a child with perl's setpgrp.
     perl
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    dbus
     # The agent command tests find a host's child with pgrep.
     procps
-  ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [ dbus ];
+  ];
   # macOS: the relay admin tests verify a test certificate through the Security
   # framework, which needs trustd.
   sandboxProfile = ''
@@ -388,6 +390,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "a_sandbox_denied_connection_keeps_the_advertisement"
       "fresh_agents_find_advertised_sessions_and_drop_stale_ones"
       "contained_file_reader_allows_workspace_but_denies_private_paths_and_aliases"
+      # Find a host's child with pgrep, which nixpkgs has only for Linux; the
+      # sandbox hides macOS's /usr/bin/pgrep.
+      "a_command_retains_the_lease_after_its_helper_is_terminated"
+      "a_second_build_waits_then_takes_over_the_attention_source"
+      "a_waiting_command_exits_when_its_host_dies"
+      "command_tree_exits_when_its_host_dies"
     ]
   );
 
