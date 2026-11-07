@@ -372,8 +372,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "terminal::tests::a_held_or_closing_session_does_not_block_another_session"
       "terminal::tests::bounded_input_and_session_admission"
       # Run macOS tools the build sandbox blocks: sandbox-exec (which can't nest
-      # in it anyway), /usr/sbin/lsof, /bin/sleep and /usr/bin/true.
+      # in it anyway), /usr/sbin/lsof, /usr/sbin/sysctl, /bin/sleep and /usr/bin/true.
       "host_process::protection::tests::kernel_denies_control_writes_and_private_reads_while_workspace_remains_writable"
+      "host_process::protection::tests::kernel_denies_creating_a_missing_read_only_leaf"
+      "catalog::tests::macos_hosting_survey_reports_physical_memory"
       "host_process::tests::protected_launches_keep_the_startup_agents_root_when_release_storage_appears"
       "host_process::tests::snapshot_mcp_and_containment_keep_the_verified_target_and_argument_order"
       "relaunch::macos::tests::opens_the_bundle_only_after_the_process_has_exited"
