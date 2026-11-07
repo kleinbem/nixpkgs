@@ -207,16 +207,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail /usr/bin/printenv ${lib.getExe' coreutils "printenv"}
   ''
   # The app's MeshLLM SDK uses a runtime only when it was built for exactly its
-  # MeshLLM release and skippy ABI, and downloads one otherwise.
+  # runtime release and skippy ABI, and downloads one otherwise. MeshLLM main
+  # versions the runtime on its own (RUNTIME_VERSION); before, it was the MeshLLM release.
   + ''
-    meshVersion=$(find "$cargoDepsCopy" -maxdepth 2 -type d -name 'mesh-llm-build-info-*' -printf '%f' | sed 's/^mesh-llm-build-info-//')
+    runtimeVersion=$(cat "$cargoDepsCopy"/*/skippy-native-runtime-*/RUNTIME_VERSION 2>/dev/null ||
+      find "$cargoDepsCopy" -maxdepth 2 -type d -name 'mesh-llm-build-info-*' -printf '%f' | sed 's/^mesh-llm-build-info-//')
     skippyAbi=$(sed -n 's/^pub const ABI_VERSION_[A-Z]*: u32 = \([0-9]*\);/\1/p' "$cargoDepsCopy"/*/skippy-ffi-*/src/lib.rs | paste -sd .)
     for manifest in ${
       lib.concatMapStringsSep " " (r: "${r}/share/mesh-llm/runtimes/*/manifest.json") meshRuntimes
     }; do
-      jq -e --arg v "$meshVersion" --arg a "$skippyAbi" \
+      jq -e --arg v "$runtimeVersion" --arg a "$skippyAbi" \
         '.runtime.release_version == $v and .runtime.skippy_abi == $a' "$manifest" > /dev/null || {
-        echo "$manifest is not for MeshLLM $meshVersion, skippy ABI $skippyAbi" >&2
+        echo "$manifest is not for runtime $runtimeVersion, skippy ABI $skippyAbi" >&2
         exit 1
       }
     done
