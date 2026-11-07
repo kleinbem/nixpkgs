@@ -27,6 +27,7 @@
   bash,
   coreutils,
   perl,
+  procps,
   curl,
   gitMinimal,
   ffmpeg-headless,
@@ -250,6 +251,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     gitMinimal
     # A host process test detaches a child with perl's setpgrp.
     perl
+    # The agent command tests find a host's child with pgrep.
+    procps
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ dbus ];
   # macOS: the relay admin tests verify a test certificate through the Security
