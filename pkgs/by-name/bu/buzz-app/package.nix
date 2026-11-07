@@ -154,7 +154,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail '"/usr/bin/mkfifo"' '"${lib.getExe' coreutils "mkfifo"}"'
     substituteInPlace crates/agent-command/tests/discovery.rs \
       --replace-fail '"/bin/bash"' '"${lib.getExe bash}"' \
-      --replace-fail '"/usr/bin/touch"' '"${lib.getExe' coreutils "touch"}"'
+      --replace-fail '"/usr/bin/touch"' '"${lib.getExe' coreutils "touch"}"' \
+      --replace-fail '"/usr/bin/true"' '"${lib.getExe' coreutils "true"}"'
     # The same for a git shim; https://github.com/block/buzz-app/pull/2417
     # prints the variable with a shell builtin instead.
     substituteInPlace crates/plugin-manager/src/imports.rs \
