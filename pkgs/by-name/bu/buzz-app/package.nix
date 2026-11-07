@@ -144,7 +144,7 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "buzz-app";
-  version = "0.7.16";
+  version = "0.7.16-unstable-2026-11-07";
 
   __structuredAttrs = true;
   strictDeps = true;
@@ -152,12 +152,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "block";
     repo = "buzz-app";
-    tag = "desktop-v${finalAttrs.version}";
-    hash = "sha256-bLibxRzu1Oa5KKsbefem8aJzSILNbebPWFEYb8LWV7o=";
+    # Trial: buzz-app main.
+    rev = "70a8aebdc9656bd808f791d91b283937ec37cec9";
+    hash = "sha256-CpreDslM2SMGO7i8Wv9YuwYKFQh+b0/uBs3p1uM4iqk=";
   };
 
   buildAndTestSubdir = "src-tauri";
-  cargoHash = "sha256-NFzG5hBoKurZc0rJzVNq5uJ8fZwgFsZMznaIwT43HjA=";
+  cargoHash = "sha256-8j5pLbhulg4SQ9fExSRapfsvrN94LDTC5AWPcz0MjlI=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
@@ -166,6 +167,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     fetcherVersion = 5;
     hash = "sha256-IhGS/E2TINPs10OpEY9NNlraUrsXHDH91rQH6dPy+qU=";
   };
+
+  # Trial: Shared compute on MeshLLM main (stage generation 13), the revision
+  # the fleet's mesh-llm nodes run.
+  cargoPatches = [ ./mesh-llm-main.patch ];
 
   patches = [
     # On Linux the app makes itself the default buzz:// handler on every start
@@ -203,20 +208,22 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail '"/usr/bin/touch"' '"${lib.getExe' coreutils "touch"}"'
     # The same for a git shim; https://github.com/block/buzz-app/pull/2417
     # prints the variable with a shell builtin instead.
-    substituteInPlace crates/plugin-manager/src/imports.rs \
+    substituteInPlace crates/plugin-manager/tests/fixtures/ssh-auth-sock.sh \
       --replace-fail /usr/bin/printenv ${lib.getExe' coreutils "printenv"}
   ''
   # The app's MeshLLM SDK uses a runtime only when it was built for exactly its
-  # MeshLLM release and skippy ABI, and downloads one otherwise.
+  # runtime release and skippy ABI, and downloads one otherwise. MeshLLM main
+  # versions the runtime on its own (RUNTIME_VERSION); before, it was the MeshLLM release.
   + ''
-    meshVersion=$(find "$cargoDepsCopy" -maxdepth 2 -type d -name 'mesh-llm-build-info-*' -printf '%f' | sed 's/^mesh-llm-build-info-//')
+    runtimeVersion=$(cat "$cargoDepsCopy"/*/skippy-native-runtime-*/RUNTIME_VERSION 2>/dev/null ||
+      find "$cargoDepsCopy" -maxdepth 2 -type d -name 'mesh-llm-build-info-*' -printf '%f' | sed 's/^mesh-llm-build-info-//')
     skippyAbi=$(sed -n 's/^pub const ABI_VERSION_[A-Z]*: u32 = \([0-9]*\);/\1/p' "$cargoDepsCopy"/*/skippy-ffi-*/src/lib.rs | paste -sd .)
     for manifest in ${
       lib.concatMapStringsSep " " (r: "${r}/share/mesh-llm/runtimes/*/manifest.json") meshRuntimes
     }; do
-      jq -e --arg v "$meshVersion" --arg a "$skippyAbi" \
+      jq -e --arg v "$runtimeVersion" --arg a "$skippyAbi" \
         '.runtime.release_version == $v and .runtime.skippy_abi == $a' "$manifest" > /dev/null || {
-        echo "$manifest is not for MeshLLM $meshVersion, skippy ABI $skippyAbi" >&2
+        echo "$manifest is not for runtime $runtimeVersion, skippy ABI $skippyAbi" >&2
         exit 1
       }
     done
