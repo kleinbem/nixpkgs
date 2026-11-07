@@ -266,6 +266,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # The tests start servers on 127.0.0.1.
   __darwinAllowLocalNetworking = true;
 
+  # DEBUG (not for nixpkgs): one test at a time, so a crash names its test.
+  dontUseCargoParallelTests = true;
   # The whole workspace, as upstream's CI tests it.
   cargoTestFlags = [
     "--workspace"
