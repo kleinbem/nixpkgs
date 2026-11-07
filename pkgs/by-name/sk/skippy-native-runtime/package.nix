@@ -33,13 +33,13 @@
     # Upstream main until the next release (0.79), then its tag without rev.
     # main reports 0.78.0: v0.78.1 was tagged on a release branch.
     version = "0.78.0-unstable-2026-11-06";
-    rev = "1e9aa1e5e2a3846bd65550dd8158862dfa33b7c4";
-    hash = "sha256-+jABD+I3KmWEwhS0l7Pp6vDTYiK23Xh62YCbvzTP+3c=";
+    rev = "26156a3baeb72050a57cb1ac2d8269c284ace412";
+    hash = "sha256-sfA+v1TTSTvw3bTu3R+27vs9QMRvdxRENfZ0boGxk80=";
     # The bNNNNN tag of the llama.cpp commit this release pins.
     llamaCppHash = "sha256-pEDYgI3AMTU+cekvRX7NNt5wddznydQSNuerswvEpsA=";
     llamaCppBuild = "11669";
     # Cargo vendor hash of the release's lockfile (mesh-llm and the automation tool).
-    cargoHash = "sha256-ifQOMGbYWVDspJzL51dflMBTj9SnWcdMCwkgYP/GZ6A=";
+    cargoHash = "sha256-8Br8m+rSnU0i6AtBFFy9R1hFFLTrJ1QQ4N7RZdYf0Wc=";
   },
 }:
 
