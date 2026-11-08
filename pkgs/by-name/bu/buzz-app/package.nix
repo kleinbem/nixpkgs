@@ -326,6 +326,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "a_sandbox_denied_connection_keeps_the_advertisement"
       "fresh_agents_find_advertised_sessions_and_drop_stale_ones"
       "contained_file_reader_allows_workspace_but_denies_private_paths_and_aliases"
+      # Sends an AppKit message to Tauri's mock window and crashes
+      # (https://github.com/block/buzz-app/pull/2883).
+      "window_state::tests::onboarding_snapshot_is_kept_until_next_launch_restore"
       # Find a host's child with pgrep, which nixpkgs has only for Linux; the
       # sandbox hides macOS's /usr/bin/pgrep.
       "a_command_retains_the_lease_after_its_helper_is_terminated"
