@@ -337,6 +337,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
   checkFlags = map (test: "--skip=${test}") (
     [
+      # Flaky: a parallel test's fork can still hold the shim it writes open
+      # (ETXTBSY); https://github.com/block/buzz-app/pull/2665 fixed it after 0.7.16.
+      "imports::tests::access_rule_socket_reaches_git"
       # Nixpkgs runs the tests in the release profile; this one expects the
       # debug-build refusal (https://github.com/block/buzz-app/pull/1778).
       "sign_out::tests::production_acl_lets_the_dialog_ask_why_wipe_is_unavailable"
