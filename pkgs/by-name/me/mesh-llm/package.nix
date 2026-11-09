@@ -1,5 +1,6 @@
 {
   lib,
+  fetchpatch2,
   stdenv,
   rustPlatform,
   buildPackages,
@@ -88,10 +89,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (see skippy-native-runtime's passthru.automation).
     "--exclude"
     "xtask"
-    # Upstream's CI process supervision, repository tooling like xtask: its
-    # tests run /bin/sleep, which neither the sandbox nor NixOS has.
-    "--exclude"
-    "process-supervision"
   ];
   checkFlags = [
     # Runs the skippy-package-builder binary, which never loads the runtime:
@@ -100,6 +97,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (https://github.com/Mesh-LLM/mesh-llm/issues/2740). This package doesn't
     # install it.
     "--skip=inspect_local_gguf_does_not_prepare_download_caches"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # Runs the setuid /usr/bin/top, which the darwin sandbox refuses to start.
+    "--skip=unix::membership::tests::macos_group_membership_inspects_setuid_member_without_eperm"
   ];
 
   # The web console, embedded into the binary by the default web-ui feature.
@@ -153,6 +154,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
     mkdir -p .deps
     ln -s ${skippy-native-runtime.src} .deps/llama.cpp
   '';
+
+  patches = [
+    # SCRATCH: Mesh-LLM#2939 candidate.
+    (fetchpatch2 {
+      url = "https://github.com/kleinbem/mesh-llm/commit/6b799c3a500ef3825b0457172f064dbd457527ab.patch?full_index=1";
+      hash = "sha256-fOMkrWBtQiHbbJf0nerP9p7iUMWkoZBEH5r9bpZYMhQ=";
+    })
+  ];
 
   postPatch = ''
     # Upstream's cargo config routes builds through sccache and its own linker drivers.
