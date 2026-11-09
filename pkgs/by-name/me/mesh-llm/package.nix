@@ -158,8 +158,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     # SCRATCH: Mesh-LLM#2939 candidate.
     (fetchpatch2 {
-      url = "https://github.com/kleinbem/mesh-llm/commit/6b799c3a500ef3825b0457172f064dbd457527ab.patch?full_index=1";
-      hash = "sha256-fOMkrWBtQiHbbJf0nerP9p7iUMWkoZBEH5r9bpZYMhQ=";
+      url = "https://github.com/kleinbem/mesh-llm/commit/28d6bfc23a315f92d2b248f0f0c11c2b1f9b39c6.patch?full_index=1";
+      hash = "sha256-d/4OXXEU+oMooIIVPky63zxcGrDKB3QxGoQhvAAfizk=";
     })
   ];
 
