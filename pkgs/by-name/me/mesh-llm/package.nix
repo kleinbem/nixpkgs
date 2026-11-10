@@ -101,6 +101,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (https://github.com/Mesh-LLM/mesh-llm/issues/2740). This package doesn't
     # install it.
     "--skip=inspect_local_gguf_does_not_prepare_download_caches"
+    # Pins llama_context_params' layout from before llama.cpp b12199, which grew
+    # it by 8 bytes; https://github.com/Mesh-LLM/mesh-llm/pull/2962 updates it.
+    "--skip=llama_draft::tests::mirrors_match_the_pinned_upstream_layouts"
   ];
 
   # The web console, embedded into the binary by the default web-ui feature.
