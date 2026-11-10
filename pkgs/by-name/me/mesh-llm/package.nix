@@ -89,7 +89,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--exclude"
     "xtask"
     # Upstream's CI process supervision, repository tooling like xtask: its
-    # tests run /bin/sleep, which neither the sandbox nor NixOS has.
+    # tests run /bin/sleep, which neither the sandbox nor NixOS has. Drop once
+    # https://github.com/Mesh-LLM/mesh-llm/pull/2939 is in the release.
     "--exclude"
     "process-supervision"
   ];
