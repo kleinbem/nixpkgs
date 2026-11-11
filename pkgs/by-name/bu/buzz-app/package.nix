@@ -16,6 +16,7 @@
   makeBinaryWrapper,
   rcodesign,
   dbus,
+  aws-lc,
   gtk3,
   libsoup_3,
   webkitgtk_4_1,
@@ -254,7 +255,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
     rcodesign
   ];
 
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux (
+  # rustls' crypto links nixpkgs' AWS-LC (aws-lc-sys 0.42+ with the cargo hooks).
+  buildInputs = [
+    aws-lc
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux (
     [
       gtk3
       libsoup_3
@@ -269,9 +274,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (.github/workflows/release.yml); it runs only after the user turns it on.
     BUZZ_NSEC_BACKUP_SERVICE_URL = "https://app.builderlab.xyz/api/goose";
     BUZZ_NSEC_BACKUP_NAMESPACE = "backup/bb-public/production";
-    # Build aws-lc (rustls' crypto) with nixpkgs' cmake instead of the crate's
-    # cc-based builder.
-    AWS_LC_SYS_CMAKE_BUILDER = 1;
   };
 
   # cmake is only used by dependency build scripts
