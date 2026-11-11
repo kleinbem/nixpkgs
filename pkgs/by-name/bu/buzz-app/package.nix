@@ -17,6 +17,7 @@
   rcodesign,
   dbus,
   aws-lc,
+  sqlite,
   gtk3,
   libsoup_3,
   webkitgtk_4_1,
@@ -255,9 +256,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
     rcodesign
   ];
 
-  # rustls' crypto links nixpkgs' AWS-LC (aws-lc-sys 0.42+ with the cargo hooks).
+  # The cargo hooks link system libraries: AWS-LC for rustls (aws-lc-sys
+  # 0.42+) and SQLite, also where rusqlite asks for its bundled copy.
   buildInputs = [
     aws-lc
+    sqlite
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux (
     [
