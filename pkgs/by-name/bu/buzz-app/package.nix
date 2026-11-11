@@ -146,7 +146,7 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "buzz-app";
-  version = "0.7.16-unstable-2026-11-07";
+  version = "0.7.16-unstable-2026-11-11";
 
   __structuredAttrs = true;
   strictDeps = true;
@@ -154,25 +154,22 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "block";
     repo = "buzz-app";
-    # Trial: buzz-app main.
-    rev = "70a8aebdc9656bd808f791d91b283937ec37cec9";
-    hash = "sha256-CpreDslM2SMGO7i8Wv9YuwYKFQh+b0/uBs3p1uM4iqk=";
+    # Trial: https://github.com/block/buzz-app/pull/3271, upstream's move to
+    # MeshLLM 0.79.0 (stage generation 16), the release the fleet's nodes run.
+    rev = "dd1f976b9200966ff97928978b63d81129d3ac25";
+    hash = "sha256-C11zJ68C1TKc1cpgTWd3uB/A0CpACyzCfdtUGONrvtc=";
   };
 
   buildAndTestSubdir = "src-tauri";
-  cargoHash = "sha256-bTsOF7v0t8U5sNeYUoZXYkUs+Cqbm45jPzB2LlDItVM=";
+  cargoHash = "sha256-k2a2q2XimC9TvssgdyNkQzDWbaKr+1jTwZ+wTOrhL18=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     # Upstream's package.json pins pnpm 11 (`packageManager`).
     pnpm = pnpm_11;
     fetcherVersion = 5;
-    hash = "sha256-IhGS/E2TINPs10OpEY9NNlraUrsXHDH91rQH6dPy+qU=";
+    hash = "sha256-f+tx08+X0NPuy4z+t2oAaVJVszZYvAVAhJiihS+pPEk=";
   };
-
-  # Trial: Shared compute on MeshLLM 0.79.0 (stage generation 16), the release
-  # the fleet's mesh-llm nodes run.
-  cargoPatches = [ ./mesh-llm-main.patch ];
 
   patches = [
     # On Linux the app makes itself the default buzz:// handler on every start
