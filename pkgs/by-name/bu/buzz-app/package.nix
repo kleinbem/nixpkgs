@@ -347,6 +347,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
       # Nixpkgs runs the tests in the release profile; this one expects the
       # debug-build refusal (https://github.com/block/buzz-app/pull/1778).
       "sign_out::tests::production_acl_lets_the_dialog_ask_why_wipe_is_unavailable"
+      # Asserts it runs as a debug build
+      # (https://github.com/block/buzz-app/pull/3386).
+      "cli_link::tests::only_the_installed_release_owns_the_link"
       # A `#!/usr/bin/env` script; the sandbox has no /usr/bin/env.
       "host_command::tests::env_shebang_uses_the_path_that_resolved_the_command"
       # Expects an error because the temporary directory has no parent named
