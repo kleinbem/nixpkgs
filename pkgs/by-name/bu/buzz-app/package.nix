@@ -181,6 +181,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # .desktop file declares the scheme instead. Not upstreamed: a .deb or
     # AppImage launches a stable path, so this only matters for Nix.
     ./no-linux-scheme-self-registration.patch
+    # The app links ~/.local/bin/buzz to the CLI in its resources
+    # (https://github.com/block/buzz-app/pull/3386). Under Nix that is a store
+    # path without a GC root: on Linux the link keeps the first version until
+    # it is collected. nixpkgs ships the CLI as buzz-cli. Not upstreamed: a
+    # .deb or AppImage install has a stable path or is skipped already.
+    ./no-cli-link.patch
   ];
 
   postPatch = ''
