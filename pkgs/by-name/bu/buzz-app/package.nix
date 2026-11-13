@@ -146,7 +146,7 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "buzz-app";
-  version = "0.7.16-unstable-2026-11-11";
+  version = "0.7.16-unstable-2026-11-13";
 
   __structuredAttrs = true;
   strictDeps = true;
@@ -156,12 +156,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     repo = "buzz-app";
     # Trial: https://github.com/block/buzz-app/pull/3271, upstream's move to
     # MeshLLM 0.79.0 (stage generation 16), the release the fleet's nodes run.
-    rev = "dd1f976b9200966ff97928978b63d81129d3ac25";
-    hash = "sha256-C11zJ68C1TKc1cpgTWd3uB/A0CpACyzCfdtUGONrvtc=";
+    rev = "058e300d89eb4575e5aff292f11db1a6d6c44f05";
+    hash = "sha256-CODTQiz+YFL0RsygoGk2uKFBQebqkFd5m8VQ26rrTJI=";
   };
 
   buildAndTestSubdir = "src-tauri";
-  cargoHash = "sha256-k2a2q2XimC9TvssgdyNkQzDWbaKr+1jTwZ+wTOrhL18=";
+  cargoHash = "sha256-cCkzcprPM1OFu521KQdxc0+puxuOeoD3CMXb3dahQWE=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
