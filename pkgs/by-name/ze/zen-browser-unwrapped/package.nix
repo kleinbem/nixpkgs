@@ -11,28 +11,29 @@
   fetchurl,
   callPackage,
   python3Minimal,
-  patch,
+  gitMinimal,
   pkg-config,
   nixosTests,
   cargo,
+  stdenv,
 }:
 
 let
-  version = "1.23.4b";
-  firefoxVersion = "158.0.1";
+  version = "1.24.2b";
+  firefoxVersion = "160.0";
   surferRev = "b3fc8ab971bd5eb4dc680391c16324b4b80adfa8";
   surferVersion = "1.14.9-unstable-2026-10-20";
 
   firefoxSrc = fetchurl {
     url = "https://archive.mozilla.org/pub/firefox/releases/${firefoxVersion}/source/firefox-${firefoxVersion}.source.tar.xz";
-    hash = "sha256-tb7/VfpzoppnSoZ9pZIvXXaZ9R41Hmu+RAX8xLpVqCQ=";
+    hash = "sha256-KyPSv2cW6ha0XBCqXCdceKHX/1CtUxUICasnQkxY/YE=";
   };
 
   desktopSrc = fetchFromGitHub {
     owner = "zen-browser";
     repo = "desktop";
     tag = version;
-    hash = "sha256-8hXSzjjCxDO/uLb2DgPYH8bgLXLjuM421FI7CD9fMU4=";
+    hash = "sha256-qE0+56tbvpGo3S6t+AIvSPiqU4ynSMFik6SGjNb7tak=";
     fetchSubmodules = true;
   };
 
@@ -112,7 +113,8 @@ let
       patchCount=0
 
       trackPatch() {
-        patch -d "$PWD/engine" -p1 -l -i "$1"
+        # git apply like Surfer does: some patches carry binary diffs, which patch(1) rejects.
+        git -C "$PWD/engine" apply --ignore-space-change --ignore-whitespace "$1"
         patchCount=$((patchCount + 1))
       }
 
@@ -137,7 +139,7 @@ let
     nativeBuildInputs = patchedSurfer.nativeBuildInputs ++ [
       cargo
       python3Minimal
-      patch
+      gitMinimal
       rustPlatform.cargoCheckHook
       rustPlatform.cargoSetupHook
       (writeScriptBin "iconutil" ''
@@ -159,6 +161,13 @@ let
 
       SURFER_MOZCONFIG_ONLY=1 ./node_modules/.bin/surfer build --skip-patch-check
 
+      ${lib.optionalString stdenv.hostPlatform.isLinux ''
+        # Upstream sets this so its release binaries run on old distros. The shim it
+        # enables (build/unix/stdc++compat) doesn't compile against nixpkgs' libstdc++,
+        # and a Nix build links the libstdc++ it runs with anyway.
+        substituteInPlace engine/mozconfig \
+          --replace-fail "export MOZ_STDCXX_COMPAT=1" ""
+      ''}
       runHook postBuild
     '';
 
@@ -193,6 +202,13 @@ in
   extraConfigureFlags = [
     "--with-app-basename=Zen"
   ];
+
+  # Zen ships a mozconfig, and mach loads it with a helper script that imports
+  # mozshellutil. `mach clobber` (run after PGO profiling) starts that helper
+  # without mach's module paths, so it only finds the module through PYTHONPATH.
+  extraPreConfigure = ''
+    export PYTHONPATH="$PWD/testing/mozbase/mozshellutil''${PYTHONPATH:+:$PYTHONPATH}"
+  '';
 
   tests = { inherit (nixosTests) zen-browser; };
   updateScript = callPackage ./update.nix {
