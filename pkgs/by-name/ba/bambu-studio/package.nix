@@ -47,6 +47,10 @@
   # 3D viewport blank on NVIDIA proprietary GL; routes through Mesa + zink.
   # https://github.com/NixOS/nixpkgs/issues/498311
   withNvidiaGLWorkaround ? false,
+  # Load the open-source network plugin from the store instead of downloading
+  # Bambu Lab's proprietary one at first launch.
+  withOpenNetworking ? false,
+  open-bamboo-networking,
   nix-update-script,
   _experimental-update-script-combinators,
 }:
@@ -71,7 +75,7 @@ let
   caBundle = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 in
 stdenv.mkDerivation (finalAttrs: {
-  pname = "bambu-studio";
+  pname = "bambu-studio" + lib.optionalString withOpenNetworking "-open";
   version = "02.09.01.70";
 
   src = fetchFromGitHub {
@@ -139,6 +143,10 @@ stdenv.mkDerivation (finalAttrs: {
     ./patches/no-cereal.patch
     # Disable nodejs
     ./patches/no-device-web-node-download.patch
+  ]
+  ++ lib.optionals withOpenNetworking [
+    # Skip the usage data consent page of the setup guide
+    ./patches/skip-privacy.patch
   ];
 
   postPatch =
@@ -154,6 +162,18 @@ stdenv.mkDerivation (finalAttrs: {
         --replace-fail \
           "#include <hpdf/hpdf.h>" \
           "#include <hpdf.h>"
+    ''
+    # Studio looks for the network plugin in ~/.config/BambuStudio/plugins and
+    # offers to download it in the setup guide.
+    + lib.optionalString withOpenNetworking ''
+      substituteInPlace src/slic3r/Utils/NetworkAgent.cpp \
+        --replace-fail \
+          'auto plugin_folder = data_dir_path / "plugins";' \
+          'boost::filesystem::path plugin_folder("${finalAttrs.passthru.networkPlugin}/plugins");'
+      substituteInPlace src/slic3r/GUI/WebGuideDialog.cpp \
+        --replace-fail \
+          'wxGetApp().app_config->get("app","installed_networking")' \
+          '"1"'
     '';
 
   doCheck = true;
@@ -246,21 +266,28 @@ stdenv.mkDerivation (finalAttrs: {
       (nix-update-script { })
       ./update-openmeshcraft.sh
     ];
+  }
+  // lib.optionalAttrs withOpenNetworking {
+    networkPlugin = open-bamboo-networking.override {
+      client = "bambu_studio";
+      # Studio only accepts a plugin with its own major.minor.patch
+      pluginVersion = "${lib.concatStringsSep "." (lib.take 3 (lib.splitVersion finalAttrs.version))}.99";
+    };
   };
 
   meta = {
     description = "PC Software for BambuLab's 3D printers";
     homepage = "https://github.com/bambulab/BambuStudio";
     changelog = "https://github.com/bambulab/BambuStudio/releases/tag/v${finalAttrs.version}";
-    license = with lib.licenses; [
-      agpl3Plus
+    license =
+      with lib.licenses;
+      [ agpl3Plus ]
       # Bambu Studio downloads and dlopens a proprietary networking library
       # at first launch whose corresponding source is not provided. SFC ruled
       # this an ongoing AGPLv3 violation; see:
       # https://github.com/NixOS/nixpkgs/issues/415821
       # https://sfconservancy.org/news/2026/may/18/bambu-studio-3d-printer-agpl-violation-response/
-      unfree
-    ];
+      ++ lib.optional (!withOpenNetworking) unfree;
     maintainers = with lib.maintainers; [
       zhaofengli
       dsluijk
