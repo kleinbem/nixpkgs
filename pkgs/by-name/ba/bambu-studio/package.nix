@@ -264,6 +264,7 @@ stdenv.mkDerivation (finalAttrs: {
     maintainers = with lib.maintainers; [
       zhaofengli
       dsluijk
+      kleinbem
       miniharinn
     ];
     mainProgram = "bambu-studio";
