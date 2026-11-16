@@ -1,5 +1,6 @@
 {
   stdenv,
+  callPackage,
   lib,
   fetchFromGitHub,
   cmake,
@@ -47,6 +48,7 @@
   # https://github.com/NixOS/nixpkgs/issues/498311
   withNvidiaGLWorkaround ? false,
   nix-update-script,
+  _experimental-update-script-combinators,
 }:
 let
   wxGTK' =
@@ -70,13 +72,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "bambu-studio";
-  version = "02.08.02.61";
+  version = "02.09.01.70";
 
   src = fetchFromGitHub {
     owner = "bambulab";
     repo = "BambuStudio";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-pj0oyHgREcmvu3Y+d99IatHXQH5CF53Ku6baPdWptyU=";
+    hash = "sha256-axA8bVvy38defbUkbqfMZOG1nRAXBrJ/XGQqyWgXp7I=";
   };
 
   nativeBuildInputs = [
@@ -121,6 +123,7 @@ stdenv.mkDerivation (finalAttrs: {
     libx11
     libharu
     opencv
+    finalAttrs.passthru.openmeshcraft
   ]
   ++ lib.optionals withSystemd [ systemdLibs ]
   ++ finalAttrs.checkInputs;
@@ -233,7 +236,16 @@ stdenv.mkDerivation (finalAttrs: {
     mv $out/README.md $out/share/BambuStudio/README.md
   '';
 
-  passthru.updateScript = nix-update-script { };
+  passthru = {
+    openmeshcraft = callPackage ./openmeshcraft.nix {
+      bambuDeps = "${finalAttrs.src}/deps/OpenMeshCraft";
+      inherit (finalAttrs.meta) maintainers;
+    };
+    updateScript = _experimental-update-script-combinators.sequence [
+      (nix-update-script { })
+      ./update-openmeshcraft.sh
+    ];
+  };
 
   meta = {
     description = "PC Software for BambuLab's 3D printers";
