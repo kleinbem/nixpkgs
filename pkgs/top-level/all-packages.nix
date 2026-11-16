@@ -8075,6 +8075,10 @@ with pkgs;
     pname = "floorp-bin";
   };
 
+  zen-browser = wrapFirefox zen-browser-unwrapped {
+    hasMozSystemDirPatch = true;
+  };
+
   inherit
     ({
       freeoffice = callPackage ../applications/office/softmaker/freeoffice.nix { };
