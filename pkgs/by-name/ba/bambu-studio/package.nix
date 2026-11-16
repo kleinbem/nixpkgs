@@ -193,7 +193,7 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "BBL_RELEASE_TO_PUBLIC" "1")
     (lib.cmakeFeature "BBL_INTERNAL_TESTING" "0")
     (lib.cmakeBool "DEP_WX_GTK3" true)
-    (lib.cmakeBool "SLIC3R_BUILD_TESTS" false)
+    (lib.cmakeBool "SLIC3R_BUILD_TESTS" true)
     (lib.cmakeFeature "CMAKE_CXX_FLAGS" "-DBOOST_LOG_DYN_LINK")
 
     (lib.cmakeFeature "LIBNOISE_INCLUDE_DIR" "${lib.getInclude libnoise}/include/noise")
