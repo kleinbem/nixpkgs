@@ -233,6 +233,7 @@
           system:
           (import ./. {
             inherit system;
+            config.allowUnfree = true;
             overlays = import ./pkgs/top-level/impure-overlays.nix ++ [
               (final: prev: {
                 lib = prev.lib.extend libVersionInfoOverlay;
