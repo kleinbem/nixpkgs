@@ -21,7 +21,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "open-bamboo-networking";
-  version = "2.0.0";
+  version = "2.3.0";
 
   strictDeps = true;
   __structuredAttrs = true;
@@ -30,7 +30,7 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "ClusterM";
     repo = "open-bamboo-networking";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-NAnPEGgctcfE6Hq+E1xagTAMswFnjqupPlkFdrBqzGo=";
+    hash = "sha256-0yrbsZvpeZozAq0baDbInxnmXoOI/8rL8G106PwbfFg=";
   };
 
   nativeBuildInputs = [
@@ -50,11 +50,13 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "OBN_CLIENT_TYPE" client)
     (lib.cmakeBool "OBN_RELEASE" true)
     (lib.cmakeBool "OBN_PATCH_CLIENT_CONF" false)
-    (lib.cmakeBool "OBN_BUILD_TESTS" false)
+    (lib.cmakeBool "OBN_BUILD_TESTS" finalAttrs.finalPackage.doCheck)
     # Prefer a staged Nix install, not ~/.config/BambuStudio
     (lib.cmakeFeature "CMAKE_INSTALL_PREFIX" "${placeholder "out"}")
     (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_CJSON" "${cjson.src}")
   ];
+
+  doCheck = true;
 
   preConfigure = ''
     cp -r ${mosquitto.src} $TMPDIR/source/mosquitto-src
