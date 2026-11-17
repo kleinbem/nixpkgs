@@ -202,8 +202,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail /usr/bin/tr ${lib.getExe' coreutils "tr"}
     substituteInPlace src-tauri/src/host_process/claude_hooks.rs \
       --replace-fail '"/bin/sleep"' '"${lib.getExe' coreutils "sleep"}"'
-    substituteInPlace src-tauri/src/gpu_reaper.rs \
-      --replace-fail '"/bin/sleep"' '"${lib.getExe' coreutils "sleep"}"'
     substituteInPlace src-tauri/src/host_process/tests.rs \
       --replace-fail '"/usr/bin/mkfifo"' '"${lib.getExe' coreutils "mkfifo"}"'
     substituteInPlace crates/agent-command/tests/discovery.rs \
@@ -404,6 +402,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "host_process::tests::protected_launches_keep_the_startup_agents_root_when_release_storage_appears"
       "host_process::tests::snapshot_mcp_and_containment_keep_the_verified_target_and_argument_order"
       "relaunch::macos::tests::opens_the_bundle_only_after_the_process_has_exited"
+      "gpu_reaper::tests::a_process_is_identified_by_pid_start_time_and_binary"
       "a_sandbox_denied_connection_keeps_the_advertisement"
       "fresh_agents_find_advertised_sessions_and_drop_stale_ones"
       "contained_file_reader_allows_workspace_but_denies_private_paths_and_aliases"
