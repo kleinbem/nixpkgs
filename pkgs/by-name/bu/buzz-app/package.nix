@@ -37,8 +37,6 @@
   gitMinimal,
   ffmpeg-headless,
   nix-update-script,
-  gitUpdater,
-  _experimental-update-script-combinators,
 
   config,
   cudaSupport ? config.cudaSupport,
@@ -146,7 +144,7 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "buzz-app";
-  version = "0.7.16-unstable-2026-11-13";
+  version = "1.0.4";
 
   __structuredAttrs = true;
   strictDeps = true;
@@ -154,10 +152,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "block";
     repo = "buzz-app";
-    # Trial: https://github.com/block/buzz-app/pull/3271, upstream's move to
-    # MeshLLM 0.79.0 (stage generation 16), the release the fleet's nodes run.
-    rev = "058e300d89eb4575e5aff292f11db1a6d6c44f05";
-    hash = "sha256-CODTQiz+YFL0RsygoGk2uKFBQebqkFd5m8VQ26rrTJI=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-da336y05Fpe1NgE0rbcHHSIFsH8EEcdBCQzrAn+34rU=";
   };
 
   buildAndTestSubdir = "src-tauri";
@@ -168,7 +164,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Upstream's package.json pins pnpm 11 (`packageManager`).
     pnpm = pnpm_11;
     fetcherVersion = 5;
-    hash = "sha256-f+tx08+X0NPuy4z+t2oAaVJVszZYvAVAhJiihS+pPEk=";
+    hash = "sha256-U6zQF/tkVNJeVHy420VguUEg1Uu6Y89Uxg3lnprydtI=";
   };
 
   patches = [
@@ -295,6 +291,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--config"
     (builtins.toJSON (
       {
+        # tauri.conf.json carries an older version; upstream's release build
+        # passes the tag's (scripts/candidate-version.mjs).
+        inherit (finalAttrs) version;
         # Upstream's command also downloads a prebuilt goose-acp and builds the
         # buzz CLI from git, which postPatch provides instead. These let packagers
         # pass their own: https://github.com/block/buzz-app/pull/1781 (goose-acp),
@@ -514,24 +513,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '';
 
   passthru = {
-    # The desktop-v* tags. nix-update reads GitHub releases, which only the
-    # v*-preview.* tags of upstream's main builds have, so gitUpdater picks the
-    # tag and nix-update updates the hashes.
-    updateScript = _experimental-update-script-combinators.sequence [
-      (gitUpdater {
-        rev-prefix = "desktop-v";
-        ignoredVersions = "-";
-      }).command
-      (nix-update-script { extraArgs = [ "--version=skip" ]; })
-    ];
+    # Stable releases only: the v*-preview.* and v*-beta.* tags are test builds.
+    updateScript = nix-update-script {
+      extraArgs = [ "--version-regex=^v(\\d+\\.\\d+\\.\\d+)$" ];
+    };
   };
 
   meta = {
-    description = "Team chat and AI agent workspace built on Nostr (1.0 beta)";
+    description = "Team chat and AI agent workspace built on Nostr";
     longDescription = ''
       Buzz is a workspace for team chat, huddles and AI agents, built on Nostr.
-      This is the Buzz 1.0 app (block/buzz-app), which upstream calls a beta, built
-      from its desktop release tags.
+      This is the Buzz 1.0 app (block/buzz-app), built from its stable release tags.
       It bundles goose; the Claude Code and Codex plugins download their own
       agents at runtime, and Claude Code's download is a prebuilt binary that
       needs nix-ld on NixOS.
