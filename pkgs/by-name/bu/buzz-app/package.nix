@@ -202,6 +202,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail /usr/bin/tr ${lib.getExe' coreutils "tr"}
     substituteInPlace src-tauri/src/host_process/claude_hooks.rs \
       --replace-fail '"/bin/sleep"' '"${lib.getExe' coreutils "sleep"}"'
+    substituteInPlace src-tauri/src/gpu_reaper.rs \
+      --replace-fail '"/bin/sleep"' '"${lib.getExe' coreutils "sleep"}"'
     substituteInPlace src-tauri/src/host_process/tests.rs \
       --replace-fail '"/usr/bin/mkfifo"' '"${lib.getExe' coreutils "mkfifo"}"'
     substituteInPlace crates/agent-command/tests/discovery.rs \
