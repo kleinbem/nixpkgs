@@ -165,6 +165,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # it is collected. nixpkgs ships the CLI as buzz-cli. Not upstreamed: a
     # .deb or AppImage install has a stable path or is skipped already.
     ./no-cli-link.patch
+    ./cli-link-test.patch
   ];
 
   postPatch = ''
