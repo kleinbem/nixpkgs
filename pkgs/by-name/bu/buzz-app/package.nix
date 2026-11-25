@@ -329,15 +329,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
       # Asserts it runs as a debug build
       # (https://github.com/block/buzz-app/pull/4210).
       "cli_link::tests::only_the_installed_release_owns_the_link"
-      # A `#!/usr/bin/env` script; the sandbox has no /usr/bin/env.
-      "host_command::tests::env_shebang_uses_the_path_that_resolved_the_command"
       # Expects an error because the temporary directory has no parent named
       # `build`; the sandbox's temporary directory is /build (or /nix/build/…)
       # (https://github.com/block/buzz-app/pull/1961).
       "build_resources::tests::leaves_unrelated_output_and_rejects_an_unknown_cargo_layout"
-      # The login shell gets its PATH from /etc/profile and the probe runs
-      # /usr/bin/env; the sandbox has neither.
-      "terminal::tests::real_spawn_fences_secrets_and_preserves_login_context"
       # The tests' shell gets PATH=/usr/bin:/bin, so it can't find
       # sleep, stty or env in the sandbox
       # (https://github.com/block/buzz-app/pull/1779).
