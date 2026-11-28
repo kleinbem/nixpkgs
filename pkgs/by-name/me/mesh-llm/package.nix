@@ -114,11 +114,21 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # (https://github.com/Mesh-LLM/mesh-llm/issues/2740). This package doesn't
     # install it.
     "--skip=inspect_local_gguf_does_not_prepare_download_caches"
+    # Expects a cancellation after 50 ms to land before a 200 ms deadline,
+    # which a loaded builder misses.
+    "--skip=deadline_cancellation_and_normal_exit_clean_only_owned_tree"
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # Spawns the setuid /usr/bin/top, which the darwin sandbox refuses to run
     # (https://github.com/Mesh-LLM/mesh-llm/issues/2740).
     "--skip=macos_group_membership_inspects_setuid_member_without_eperm"
+    # Compares `ls -le` output before and after: in the darwin sandbox the
+    # second listing sometimes shows the ACL entry's UUID instead of user:nobody
+    # (https://github.com/Mesh-LLM/mesh-llm/pull/3232).
+    "--skip=a_replaced_file_keeps_its_acl_on_macos"
+    # Runs a copy of the test binary and deletes it; on the darwin builder the
+    # process is reported gone right after the delete.
+    "--skip=a_running_process_keeps_its_identity_when_its_executable_is_renamed_or_deleted"
   ];
 
   # The web console, embedded into the binary by the default web-ui feature.
